@@ -98,6 +98,8 @@ pub struct AppState {
     pub is_tun_privileged: bool,
     pub show_tun_modal: bool,
     pub is_granting_privilege: bool,
+    pub tun_password_input: String,
+    pub tun_input_focus: usize,
 
     // Profiles & Parsed Active Profile Data
     pub profiles: Vec<crate::profile::ProfileItem>,
@@ -166,6 +168,8 @@ impl Default for AppState {
             is_tun_privileged: crate::core::TunMode::check_privilege(),
             show_tun_modal: false,
             is_granting_privilege: false,
+            tun_password_input: String::new(),
+            tun_input_focus: 0,
             profiles: Vec::new(),
             parsed_active_profile: None,
             selected_profile_idx: 0,
