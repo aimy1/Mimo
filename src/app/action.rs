@@ -39,6 +39,10 @@ pub enum Action {
     // Core & System Controls
     ToggleSystemProxy,
     ToggleTunMode,
+    ShowTunModal,
+    HideTunModal,
+    GrantTunPrivilege,
+    TunPrivilegeResult(bool),
     StartCore,
     StopCore,
     RestartCore,

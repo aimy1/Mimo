@@ -282,6 +282,22 @@ impl App {
                     return Ok(false);
                 }
 
+                // Layer 2.5: TUN Privilege Modal Processing
+                if self.state.show_tun_modal {
+                    match key.code {
+                        KeyCode::Esc | KeyCode::Char('n') | KeyCode::Char('N') => {
+                            let _ = self.action_tx.try_send(Action::HideTunModal);
+                        }
+                        KeyCode::Enter | KeyCode::Char('y') | KeyCode::Char('Y') => {
+                            if !self.state.is_granting_privilege {
+                                let _ = self.action_tx.try_send(Action::GrantTunPrivilege);
+                            }
+                        }
+                        _ => {}
+                    }
+                    return Ok(false);
+                }
+
                 // Layer 3: Global Hotkeys (Usable from anywhere when not typing)
                 match key.code {
                     KeyCode::Char('q') => return Ok(true),
@@ -424,15 +440,7 @@ impl App {
                                 let _ = self.action_tx.try_send(Action::ClearLogs);
                             }
                             KeyCode::Char('p') | KeyCode::Char('P') if self.state.active_tab == Tab::Privileges => {
-                                self.state.push_toast("Requesting system root privileges for TUN mode...".to_string());
-                                if crate::core::TunMode::grant_privilege().is_ok() {
-                                    self.state.is_tun_privileged = crate::core::TunMode::check_privilege();
-                                    if self.state.is_tun_privileged {
-                                        self.state.push_toast("Privilege granted successfully! cap_net_admin authorized.".to_string());
-                                    }
-                                } else {
-                                    self.state.push_toast("Failed to obtain system root privileges.".to_string());
-                                }
+                                let _ = self.action_tx.try_send(Action::ShowTunModal);
                             }
                             _ => {}
                         },
@@ -442,6 +450,14 @@ impl App {
 
             Action::Mouse(mouse) => {
                 use crossterm::event::{MouseButton, MouseEventKind};
+                if self.state.show_tun_modal {
+                    if let MouseEventKind::Down(MouseButton::Left) = mouse.kind {
+                        if !self.state.is_granting_privilege {
+                            let _ = self.action_tx.try_send(Action::GrantTunPrivilege);
+                        }
+                    }
+                    return Ok(false);
+                }
                 match mouse.kind {
                     MouseEventKind::ScrollDown => self.move_selection(1),
                     MouseEventKind::ScrollUp => self.move_selection(-1),
@@ -762,16 +778,52 @@ impl App {
                 }
             }
 
+            Action::ShowTunModal => {
+                self.state.show_tun_modal = true;
+            }
+
+            Action::HideTunModal => {
+                self.state.show_tun_modal = false;
+                self.state.is_granting_privilege = false;
+            }
+
+            Action::GrantTunPrivilege => {
+                self.state.is_granting_privilege = true;
+                self.state.push_toast("🔐 正在调起 Linux Polkit 系统提权窗口...".to_string());
+
+                let tx = self.action_tx.clone();
+                tokio::task::spawn_blocking(move || {
+                    let res = crate::core::TunMode::grant_privilege().is_ok();
+                    let _ = tx.blocking_send(Action::TunPrivilegeResult(res));
+                });
+            }
+
+            Action::TunPrivilegeResult(success) => {
+                self.state.is_granting_privilege = false;
+                if success {
+                    self.state.is_tun_privileged = crate::core::TunMode::check_privilege();
+                    if self.state.is_tun_privileged {
+                        self.state.show_tun_modal = false;
+                        self.state.push_toast("🎉 系统权限授权成功 (CAP_NET_ADMIN)".to_string());
+
+                        let client = self.client.clone();
+                        let tx = self.action_tx.clone();
+                        tokio::spawn(async move {
+                            if client.set_tun_enabled(true).await.is_ok() {
+                                let _ = tx.send(Action::FetchConfig).await;
+                            }
+                        });
+                    } else {
+                        self.state.push_toast("⚠️ 提权执行完成但未检测到 CAP_NET_ADMIN 权限".to_string());
+                    }
+                } else {
+                    self.state.push_toast("❌ 提权授权申请失败或已被取消".to_string());
+                }
+            }
+
             Action::ToggleTunMode => {
                 if !self.state.is_tun_privileged {
-                    self.state.push_toast("Requesting system root privileges for TUN mode...".to_string());
-                    if crate::core::TunMode::grant_privilege().is_ok() {
-                        self.state.is_tun_privileged = crate::core::TunMode::check_privilege();
-                    }
-                }
-
-                if !self.state.is_tun_privileged {
-                    self.state.push_toast("TUN failed: Require system root privileges".to_string());
+                    self.state.show_tun_modal = true;
                 } else {
                     let client = self.client.clone();
                     let new_state = !self.state.is_tun_enabled;
@@ -781,6 +833,11 @@ impl App {
                             let _ = tx.send(Action::FetchConfig).await;
                         }
                     });
+                    if new_state {
+                        self.state.push_toast("TUN 虚拟网卡模式已开启".to_string());
+                    } else {
+                        self.state.push_toast("TUN 虚拟网卡模式已关闭".to_string());
+                    }
                 }
             }
 

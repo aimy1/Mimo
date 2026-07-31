@@ -96,6 +96,8 @@ pub struct AppState {
     pub is_sysproxy_enabled: bool,
     pub is_tun_enabled: bool,
     pub is_tun_privileged: bool,
+    pub show_tun_modal: bool,
+    pub is_granting_privilege: bool,
 
     // Profiles & Parsed Active Profile Data
     pub profiles: Vec<crate::profile::ProfileItem>,
@@ -162,6 +164,8 @@ impl Default for AppState {
             is_sysproxy_enabled: crate::core::SystemProxy::is_enabled(),
             is_tun_enabled: false,
             is_tun_privileged: crate::core::TunMode::check_privilege(),
+            show_tun_modal: false,
+            is_granting_privilege: false,
             profiles: Vec::new(),
             parsed_active_profile: None,
             selected_profile_idx: 0,

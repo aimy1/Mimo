@@ -61,4 +61,9 @@ pub fn render(f: &mut Frame, state: &AppState) {
     if state.show_help {
         components::help_modal::render(f, f.area(), &state.settings_lang);
     }
+
+    // 7. TUN Privilege Modal Overlay if active
+    if state.show_tun_modal {
+        components::tun_modal::render(f, state, f.area());
+    }
 }
