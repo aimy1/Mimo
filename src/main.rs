@@ -1,9 +1,11 @@
-mod api;
-mod app;
-mod commands;
-mod config;
-mod core;
-mod ui;
+pub mod api;
+pub mod app;
+pub mod commands;
+pub mod config;
+pub mod core;
+pub mod models;
+pub mod profile;
+pub mod ui;
 
 use api::MihomoClient;
 use app::App;

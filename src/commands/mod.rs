@@ -1,6 +1,6 @@
 use crate::api::MihomoClient;
-use crate::config::profile::ProfileManager;
 use crate::core::{CoreProcess, SystemProxy, TunMode};
+use crate::profile::ProfileManager;
 use anyhow::Result;
 
 pub async fn handle_status(client: &MihomoClient) -> Result<()> {
@@ -49,7 +49,14 @@ pub async fn handle_core_action(action: &str) -> Result<()> {
     match action {
         "start" => {
             println!("Starting Mihomo core service...");
-            CoreProcess::start()?;
+            let index = ProfileManager::load_index()?;
+            if let Some(active) = index.active_profile {
+                let dir = ProfileManager::profiles_dir()?;
+                let path = dir.join(format!("{}.yaml", active));
+                CoreProcess::start_with_config(&path)?;
+            } else {
+                CoreProcess::restart()?;
+            }
             println!("\x1b[32mDone.\x1b[0m");
         }
         "stop" => {

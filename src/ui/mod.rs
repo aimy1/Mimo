@@ -1,5 +1,7 @@
 pub mod components;
 pub mod i18n;
+pub mod profile;
+pub mod proxy;
 pub mod theme;
 pub mod views;
 
@@ -37,8 +39,8 @@ pub fn render(f: &mut Frame, state: &AppState) {
     // 3. Active Tab View
     match state.active_tab {
         Tab::Dashboard => views::dashboard::render(f, state, workspace_layout[1]),
-        Tab::Proxies => views::proxies::render(f, state, workspace_layout[1]),
-        Tab::Profiles => views::profiles::render(f, state, workspace_layout[1]),
+        Tab::Proxies => proxy::render(f, state, workspace_layout[1]),
+        Tab::Profiles => profile::render(f, state, workspace_layout[1]),
         Tab::Rules => views::rules::render(f, state, workspace_layout[1]),
         Tab::Connections => views::connections::render(f, state, workspace_layout[1]),
         Tab::Traffic => views::traffic::render(f, state, workspace_layout[1]),

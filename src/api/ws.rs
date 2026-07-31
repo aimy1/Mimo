@@ -1,4 +1,4 @@
-use crate::api::models::{LogMessage, TrafficMessage};
+use crate::models::{LogMessage, TrafficMessage};
 use anyhow::{Context, Result};
 use futures_util::StreamExt;
 use tokio::sync::mpsc;

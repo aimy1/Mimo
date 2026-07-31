@@ -1,5 +1,4 @@
-pub mod client;
-pub mod models;
+pub mod mihomo;
 pub mod ws;
 
-pub use client::MihomoClient;
+pub use mihomo::MihomoClient;

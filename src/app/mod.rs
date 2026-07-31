@@ -146,7 +146,7 @@ impl App {
     pub fn fetch_profiles(&self) {
         let tx = self.action_tx.clone();
         tokio::spawn(async move {
-            let res = crate::config::profile::ProfileManager::list_profiles()
+            let res = crate::profile::ProfileManager::list_profiles()
                 .map_err(|e| e.to_string());
             let _ = tx.send(Action::ProfilesFetched(res)).await;
         });
@@ -618,7 +618,7 @@ impl App {
                 self.state.push_toast(format!("Downloading profile '{}'...", name));
                 let tx = self.action_tx.clone();
                 tokio::spawn(async move {
-                    match crate::config::profile::ProfileManager::download_profile(&name, &url).await {
+                    match crate::profile::ProfileManager::download_profile(&name, &url).await {
                         Ok(_) => {
                             let _ = tx.send(Action::FetchProfiles).await;
                         }
@@ -634,12 +634,12 @@ impl App {
                 let client = self.client.clone();
                 let target_name = name.clone();
                 tokio::spawn(async move {
-                    if let Ok(dir) = crate::config::profile::ProfileManager::profiles_dir() {
+                    if let Ok(dir) = crate::profile::ProfileManager::profiles_dir() {
                         let path = dir.join(format!("{}.yaml", target_name));
                         if path.exists() {
                             let path_str = path.to_string_lossy().to_string();
                             if client.reload_config(&path_str).await.is_ok() {
-                                let _ = crate::config::profile::ProfileManager::set_active_profile(&target_name);
+                                let _ = crate::profile::ProfileManager::set_active_profile(&target_name);
                                 let _ = tx.send(Action::FetchProfiles).await;
                             }
                         }
@@ -648,7 +648,7 @@ impl App {
             }
 
             Action::DeleteProfile(name) => {
-                let _ = crate::config::profile::ProfileManager::delete_profile(&name);
+                let _ = crate::profile::ProfileManager::delete_profile(&name);
                 self.fetch_profiles();
                 self.state.push_toast(format!("Deleted profile '{}'", name));
             }

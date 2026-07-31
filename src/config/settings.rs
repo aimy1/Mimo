@@ -1,0 +1,64 @@
+use anyhow::{Context, Result};
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::PathBuf;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Settings {
+    pub language: String,
+    pub api_url: String,
+    pub secret: Option<String>,
+    pub refresh_interval_ms: u64,
+    pub http_port: u16,
+    pub socks_port: u16,
+    pub test_url: String,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            language: "zh".to_string(),
+            api_url: "http://127.0.0.1:9090".to_string(),
+            secret: None,
+            refresh_interval_ms: 1000,
+            http_port: 7890,
+            socks_port: 7891,
+            test_url: "http://www.gstatic.com/generate_204".to_string(),
+        }
+    }
+}
+
+impl Settings {
+    pub fn config_dir() -> Result<PathBuf> {
+        let home = dirs::home_dir().context("Could not locate home directory")?;
+        let dir = home.join(".config").join("mimo");
+        if !dir.exists() {
+            fs::create_dir_all(&dir)?;
+        }
+        Ok(dir)
+    }
+
+    pub fn config_file_path() -> Result<PathBuf> {
+        Ok(Self::config_dir()?.join("config.toml"))
+    }
+
+    pub fn load() -> Result<Self> {
+        let path = Self::config_file_path()?;
+        if path.exists() {
+            let content = fs::read_to_string(&path)?;
+            let cfg: Settings = toml::from_str(&content)?;
+            Ok(cfg)
+        } else {
+            let cfg = Self::default();
+            cfg.save()?;
+            Ok(cfg)
+        }
+    }
+
+    pub fn save(&self) -> Result<()> {
+        let path = Self::config_file_path()?;
+        let content = toml::to_string_pretty(self)?;
+        fs::write(path, content)?;
+        Ok(())
+    }
+}

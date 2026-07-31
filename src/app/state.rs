@@ -1,5 +1,5 @@
-use crate::api::models::*;
 use crate::config::Config;
+use crate::models::*;
 use std::collections::{HashMap, VecDeque};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -70,7 +70,7 @@ pub struct AppState {
     pub search_query: String,
 
     // Rules Data
-    pub rules_resp: Option<crate::api::models::RulesResponse>,
+    pub rules_resp: Option<crate::models::RulesResponse>,
     pub selected_rule_idx: usize,
 
     // Settings State
@@ -95,7 +95,7 @@ pub struct AppState {
     pub is_tun_privileged: bool,
 
     // Profiles Data
-    pub profiles: Vec<crate::config::profile::ProfileItem>,
+    pub profiles: Vec<crate::profile::ProfileItem>,
     pub selected_profile_idx: usize,
     pub show_profile_input: bool,
     pub profile_name_input: String,

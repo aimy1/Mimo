@@ -1,4 +1,4 @@
-use crate::api::models::*;
+use crate::models::*;
 use crossterm::event::KeyEvent;
 
 #[derive(Debug)]
@@ -26,10 +26,10 @@ pub enum Action {
     FetchConnections,
     // Rules Actions
     FetchRules,
-    RulesFetched(Result<crate::api::models::RulesResponse, String>),
+    RulesFetched(Result<crate::models::RulesResponse, String>),
     // Profile Actions
     FetchProfiles,
-    ProfilesFetched(Result<Vec<crate::config::profile::ProfileItem>, String>),
+    ProfilesFetched(Result<Vec<crate::profile::ProfileItem>, String>),
     AddProfile { name: String, url: String },
     UpdateProfile(String),
     ActivateProfile(String),
