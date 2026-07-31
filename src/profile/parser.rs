@@ -134,3 +134,23 @@ impl ProfileParser {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_riolu() {
+        let home = dirs::home_dir().unwrap();
+        let path = home.join(".config/mimo/profiles/RioLU.yaml");
+        if path.exists() {
+            let content = std::fs::read_to_string(&path).unwrap();
+            let parsed = ProfileParser::parse_yaml(&content).unwrap();
+            println!("RioLU proxies count: {}", parsed.proxies.len());
+            println!("RioLU groups count: {}", parsed.proxy_groups.len());
+            for p in &parsed.proxies {
+                println!("  Node: {}", p.name);
+            }
+        }
+    }
+}

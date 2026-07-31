@@ -616,6 +616,21 @@ impl App {
                     if !self.state.profiles.is_empty() && self.state.selected_profile_idx >= self.state.profiles.len() {
                         self.state.selected_profile_idx = self.state.profiles.len() - 1;
                     }
+
+                    if let Some(active) = self.state.profiles.iter().find(|p| p.is_active).or_else(|| self.state.profiles.first()) {
+                        if let Ok(content) = std::fs::read_to_string(&active.file_path) {
+                            if let Ok(parsed) = crate::profile::ProfileParser::parse_yaml(&content) {
+                                if self.state.proxy_groups.is_empty() {
+                                    let mut groups: Vec<String> = parsed.proxy_groups.iter().map(|g| g.name.clone()).collect();
+                                    if !groups.contains(&"GLOBAL".to_string()) {
+                                        groups.insert(0, "GLOBAL".to_string());
+                                    }
+                                    self.state.proxy_groups = groups;
+                                }
+                                self.state.parsed_active_profile = Some(parsed);
+                            }
+                        }
+                    }
                 }
                 Err(e) => self.state.push_toast(format!("Profile Error: {}", e)),
             },

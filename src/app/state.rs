@@ -94,8 +94,9 @@ pub struct AppState {
     pub is_tun_enabled: bool,
     pub is_tun_privileged: bool,
 
-    // Profiles Data
+    // Profiles & Parsed Active Profile Data
     pub profiles: Vec<crate::profile::ProfileItem>,
+    pub parsed_active_profile: Option<crate::profile::ParsedProfile>,
     pub selected_profile_idx: usize,
     pub show_profile_input: bool,
     pub profile_name_input: String,
@@ -159,6 +160,7 @@ impl Default for AppState {
             is_tun_enabled: false,
             is_tun_privileged: crate::core::TunMode::check_privilege(),
             profiles: Vec::new(),
+            parsed_active_profile: None,
             selected_profile_idx: 0,
             show_profile_input: false,
             profile_name_input: String::new(),
@@ -204,16 +206,27 @@ impl AppState {
             None => return Vec::new(),
         };
 
-        let resp = match &self.proxies_resp {
-            Some(r) => r,
-            None => return Vec::new(),
-        };
+        if let Some(resp) = &self.proxies_resp {
+            if let Some(group_item) = resp.proxies.get(group_name) {
+                if let Some(all) = &group_item.all {
+                    if !all.is_empty() {
+                        return all.clone();
+                    }
+                }
+            }
+        }
 
-        let group_item = match resp.proxies.get(group_name) {
-            Some(item) => item,
-            None => return Vec::new(),
-        };
+        // Fallback to parsed active profile YAML
+        if let Some(parsed) = &self.parsed_active_profile {
+            if group_name.eq_ignore_ascii_case("GLOBAL") {
+                return parsed.proxies.iter().map(|p| p.name.clone()).collect();
+            }
+            if let Some(g) = parsed.proxy_groups.iter().find(|g| g.name == group_name) {
+                return g.proxies.clone();
+            }
+            return parsed.proxies.iter().map(|p| p.name.clone()).collect();
+        }
 
-        group_item.all.clone().unwrap_or_default()
+        Vec::new()
     }
 }

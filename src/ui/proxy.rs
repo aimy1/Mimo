@@ -112,10 +112,17 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
                 .proxies_resp
                 .as_ref()
                 .and_then(|r| r.proxies.get(*node_name))
-                .map(|p| p.proxy_type.as_str())
-                .unwrap_or("Node");
+                .map(|p| p.proxy_type.clone())
+                .or_else(|| {
+                    state
+                        .parsed_active_profile
+                        .as_ref()
+                        .and_then(|p| p.proxies.iter().find(|n| &n.name == *node_name))
+                        .map(|n| n.proxy_type.clone())
+                })
+                .unwrap_or_else(|| "Node".to_string());
 
-            let type_badge_style = match proxy_type {
+            let type_badge_style = match proxy_type.as_str() {
                 "Shadowsocks" | "SS" => Style::default().fg(Color::Rgb(137, 220, 235)),
                 "Vmess" | "Vless" => Style::default().fg(Color::Rgb(203, 166, 247)),
                 "Trojan" => Style::default().fg(Color::Rgb(249, 226, 175)),
