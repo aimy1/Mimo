@@ -73,7 +73,11 @@ impl CoreProcess {
 
         info!("Starting Mihomo Core: {:?} -f {:?}", binary, config_path);
 
+        let work_dir = config_path.parent().and_then(|p| p.parent()).unwrap_or_else(|| Path::new("/home/fd/.config/mimo"));
+
         let child = StdCommand::new(&binary)
+            .arg("-d")
+            .arg(work_dir)
             .arg("-f")
             .arg(config_path)
             .stdout(Stdio::null())
