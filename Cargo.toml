@@ -1,0 +1,24 @@
+[package]
+name = "mimo"
+version = "0.1.0"
+edition = "2021"
+authors = ["Mimo Developers"]
+description = "Minimal Mihomo Manager - Modern, keyboard-driven Linux TUI for Mihomo/Clash Meta"
+
+[dependencies]
+tokio = { version = "1.40", features = ["full"] }
+ratatui = "0.29"
+crossterm = { version = "0.28", features = ["event-stream"] }
+reqwest = { version = "0.12", features = ["json"] }
+tokio-tungstenite = "0.24"
+futures-util = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+clap = { version = "4.5", features = ["derive"] }
+toml = "0.8"
+dirs = "5.0"
+anyhow = "1.0"
+unicode-width = "0.2"
+urlencoding = "2.1"
+libc = "0.2"
+sysinfo = "0.31"
