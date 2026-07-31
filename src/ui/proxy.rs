@@ -122,13 +122,21 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
                 })
                 .unwrap_or_else(|| "Node".to_string());
 
-            let type_badge_style = match proxy_type.as_str() {
-                "Shadowsocks" | "SS" => Style::default().fg(Color::Rgb(137, 220, 235)),
-                "Vmess" | "Vless" => Style::default().fg(Color::Rgb(203, 166, 247)),
-                "Trojan" => Style::default().fg(Color::Rgb(249, 226, 175)),
-                "Hysteria2" | "Tuic" => Style::default().fg(Color::Rgb(166, 227, 161)),
-                "Selector" | "URLTest" => Style::default().fg(Theme::TEXT_MUTED),
-                _ => Style::default().fg(Theme::TEXT_MUTED),
+            let is_info_card = node_name.contains("gmail") || node_name.contains("官网") || node_name.contains("客服") || node_name.contains("支持AI");
+            let badge_text = if is_info_card { "INFO".to_string() } else { proxy_type.clone() };
+
+            let type_badge_style = if is_info_card {
+                Style::default().fg(Color::DarkGray)
+            } else {
+                match proxy_type.as_str() {
+                    "Shadowsocks" | "SS" => Style::default().fg(Color::Rgb(137, 220, 235)),
+                    "Vmess" | "Vless" => Style::default().fg(Color::Rgb(203, 166, 247)),
+                    "Trojan" => Style::default().fg(Color::Rgb(249, 226, 175)),
+                    "Hysteria2" | "Tuic" => Style::default().fg(Color::Rgb(166, 227, 161)),
+                    "anytls" => Style::default().fg(Color::Rgb(137, 220, 235)),
+                    "Selector" | "URLTest" => Style::default().fg(Theme::TEXT_MUTED),
+                    _ => Style::default().fg(Theme::TEXT_MUTED),
+                }
             };
 
             // Latency Pill lookup
@@ -145,31 +153,37 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
                         .and_then(|p| p.last_delay())
                 });
 
-            let latency_span = match delay_opt {
-                Some(ms) if ms < 200 => Span::styled(
-                    format!(" {:>4} ms ", ms),
-                    Theme::PILL_GOOD,
-                ),
-                Some(ms) if ms < 500 => Span::styled(
-                    format!(" {:>4} ms ", ms),
-                    Theme::PILL_MEDIUM,
-                ),
-                Some(ms) => Span::styled(
-                    format!(" {:>4} ms ", ms),
-                    Theme::PILL_BAD,
-                ),
-                None => Span::styled(" --- ms ", Theme::PILL_UNTESTED),
+            let latency_span = if is_info_card {
+                Span::styled(" [提示卡片] ", Style::default().fg(Color::DarkGray))
+            } else {
+                match delay_opt {
+                    Some(ms) if ms < 200 => Span::styled(
+                        format!(" {:>4} ms ", ms),
+                        Theme::PILL_GOOD,
+                    ),
+                    Some(ms) if ms < 500 => Span::styled(
+                        format!(" {:>4} ms ", ms),
+                        Theme::PILL_MEDIUM,
+                    ),
+                    Some(ms) => Span::styled(
+                        format!(" {:>4} ms ", ms),
+                        Theme::PILL_BAD,
+                    ),
+                    None => Span::styled(" --- ms ", Theme::PILL_UNTESTED),
+                }
             };
 
             let name_style = if is_now {
                 Style::default().fg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD)
+            } else if is_info_card {
+                Style::default().fg(Color::DarkGray)
             } else {
                 Style::default().fg(Color::White)
             };
 
             let line = Line::from(vec![
                 Span::styled(mark, Style::default().fg(Theme::ACTIVE_GREEN)),
-                Span::styled(format!("[{:<7}] ", proxy_type), type_badge_style),
+                Span::styled(format!("[{:<7}] ", badge_text), type_badge_style),
                 Span::styled(format!("{:<30}", node_name), name_style),
                 latency_span,
             ]);

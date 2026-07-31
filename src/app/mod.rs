@@ -964,9 +964,27 @@ impl App {
                     None => return,
                 };
 
-                let _ = self.client.select_proxy(&group, &node).await;
-                self.fetch_proxies();
-                self.state.push_toast(format!("Selected '{}' -> '{}'", group, node));
+                let client = self.client.clone();
+                let groups = self.state.proxy_groups.clone();
+                let target_node = node.clone();
+                let tx = self.action_tx.clone();
+
+                tokio::spawn(async move {
+                    // 1. Update the selected group directly
+                    let _ = client.select_proxy(&group, &target_node).await;
+
+                    // 2. Broadcast selection to ALL selector groups (e.g. Proxies, GLOBAL, Google, YouTube, etc.)
+                    if group.eq_ignore_ascii_case("GLOBAL") || group.eq_ignore_ascii_case("Proxies") {
+                        for g in &groups {
+                            if g != &group {
+                                let _ = client.select_proxy(g, &target_node).await;
+                            }
+                        }
+                    }
+                    let _ = tx.send(Action::FetchProxies).await;
+                });
+
+                self.state.push_toast(format!("Selected '{}' (Applied to all groups)", node));
             }
             Tab::Profiles => {
                 if let Some(profile) = self.state.profiles.get(self.state.selected_profile_idx) {
