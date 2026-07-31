@@ -73,12 +73,18 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         })
         .collect();
 
+    let sidebar_border_style = if state.focus_zone == crate::app::state::FocusZone::Sidebar {
+        Style::default().fg(Theme::BORDER_FOCUS)
+    } else {
+        Style::default().fg(Theme::BORDER)
+    };
+
     let sidebar_list = List::new(items)
         .block(
             Block::default()
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded)
-                .border_style(Style::default().fg(Theme::BORDER))
+                .border_style(sidebar_border_style)
                 .title(Span::styled(" 菜单 Menu ", Style::default().fg(Theme::TEXT_MUTED))),
         );
 

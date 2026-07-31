@@ -1,136 +1,137 @@
+use crate::api::MihomoClient;
+use crate::app::action::Action;
+use anyhow::Result;
+use crossterm::event::{Event as CrosstermEvent, EventStream, KeyCode, KeyModifiers};
+use std::time::Duration;
+use tokio::sync::mpsc;
+use tokio::time::interval;
+
 pub mod action;
 pub mod state;
 
-pub use action::Action;
-pub use state::{AppState, PaneFocus, Tab};
-
-use crate::api::MihomoClient;
-use crate::config::Config;
-use anyhow::Result;
-use crossterm::event::{Event as CrosstermEvent, EventStream, KeyCode, KeyModifiers};
+pub use state::{AppState, FocusZone, ProxySubFocus, Tab};
 use futures_util::StreamExt;
-use std::time::Duration;
-use tokio::sync::mpsc;
 
 pub struct App {
-    pub config: Config,
-    pub client: MihomoClient,
     pub state: AppState,
+    pub client: MihomoClient,
     pub action_tx: mpsc::Sender<Action>,
     pub action_rx: mpsc::Receiver<Action>,
 }
 
 impl App {
-    pub fn new(config: Config, client: MihomoClient) -> Self {
-        let (action_tx, action_rx) = mpsc::channel(250);
-        Self {
-            config,
+    pub fn new() -> Result<Self> {
+        let state = AppState::default();
+        let client = MihomoClient::new(&state.settings_api_url, if state.settings_secret.is_empty() { None } else { Some(state.settings_secret.clone()) })?;
+        let (action_tx, action_rx) = mpsc::channel(100);
+
+        Ok(Self {
+            state,
             client,
-            state: AppState::default(),
             action_tx,
             action_rx,
-        }
+        })
     }
 
-    /// Spawn async background tasks (WS subscriptions, tick loop, crossterm input)
-    pub async fn run_event_loop(&mut self) -> Result<()> {
-        let action_tx = self.action_tx.clone();
+    pub async fn run(&mut self, terminal: &mut ratatui::Terminal<impl ratatui::backend::Backend>) -> Result<()> {
+        let mut reader = EventStream::new();
+        let mut tick_interval = interval(Duration::from_millis(self.state.settings_refresh_ms));
 
-        // 1. Spawning Tick Loop
-        let tick_tx = action_tx.clone();
-        let interval_ms = self.config.refresh_interval_ms;
-        tokio::spawn(async move {
-            let mut interval = tokio::time::interval(Duration::from_millis(interval_ms));
-            loop {
-                interval.tick().await;
-                if tick_tx.send(Action::Tick).await.is_err() {
-                    break;
-                }
-            }
-        });
-
-        // 2. Spawning Terminal Input Stream Loop (Key & Mouse)
-        let event_tx = action_tx.clone();
-        tokio::spawn(async move {
-            let mut reader = EventStream::new();
-            while let Some(Ok(event)) = reader.next().await {
-                match event {
-                    CrosstermEvent::Key(key_event) => {
-                        if event_tx.send(Action::Key(key_event)).await.is_err() {
-                            break;
-                        }
-                    }
-                    CrosstermEvent::Mouse(mouse_event) => {
-                        if event_tx.send(Action::Mouse(mouse_event)).await.is_err() {
-                            break;
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        });
-
-        // 3. Spawning Traffic WebSocket Stream Loop
-        let traffic_tx = action_tx.clone();
-        let base_url = self.client.base_url().to_string();
-        let secret = self.client.secret().map(String::from);
+        // Start WebSocket Background Listeners
+        let ws_tx = self.action_tx.clone();
+        let ws_url = self.client.base_url().to_string();
+        let ws_secret = self.client.secret().map(|s| s.to_string());
         tokio::spawn(async move {
             let (tx, mut rx) = mpsc::channel(100);
-            let url = base_url.clone();
-            let sec = secret.clone();
-            let _ = tokio::spawn(async move {
-                let _ = crate::api::ws::stream_traffic(&url, sec.as_deref(), tx).await;
+            tokio::spawn(async move {
+                let _ = crate::api::ws::stream_traffic(&ws_url, ws_secret.as_deref(), tx).await;
             });
             while let Some(msg) = rx.recv().await {
-                if traffic_tx.send(Action::TrafficReceived(msg)).await.is_err() {
-                    break;
-                }
+                let _ = ws_tx.send(Action::TrafficReceived(msg)).await;
             }
         });
 
-        // 4. Spawning Logs WebSocket Stream Loop
-        let logs_tx = action_tx.clone();
-        let base_url = self.client.base_url().to_string();
-        let secret = self.client.secret().map(String::from);
+        let ws_log_tx = self.action_tx.clone();
+        let ws_log_url = self.client.base_url().to_string();
+        let ws_log_secret = self.client.secret().map(|s| s.to_string());
         tokio::spawn(async move {
-            let (tx, mut rx) = mpsc::channel(200);
-            let url = base_url.clone();
-            let sec = secret.clone();
-            let _ = tokio::spawn(async move {
-                let _ = crate::api::ws::stream_logs(&url, sec.as_deref(), "info", tx).await;
+            let (tx, mut rx) = mpsc::channel(500);
+            tokio::spawn(async move {
+                let _ = crate::api::ws::stream_logs(&ws_log_url, ws_log_secret.as_deref(), "info", tx).await;
             });
             while let Some(msg) = rx.recv().await {
-                if logs_tx.send(Action::LogReceived(msg)).await.is_err() {
-                    break;
-                }
+                let _ = ws_log_tx.send(Action::LogReceived(msg)).await;
             }
         });
 
         // Initial Data Fetch
-        self.fetch_initial_data().await;
+        self.fetch_version();
+        self.fetch_config();
+        self.fetch_proxies();
+        self.fetch_profiles();
+        self.fetch_rules();
+        self.fetch_connections();
+
+        loop {
+            tokio::select! {
+                _ = tick_interval.tick() => {
+                    if self.action_tx.send(Action::Tick).await.is_err() {
+                        break;
+                    }
+                }
+                maybe_event = reader.next() => {
+                    match maybe_event {
+                        Some(Ok(CrosstermEvent::Key(key))) => {
+                            if key.kind == crossterm::event::KeyEventKind::Press {
+                                if self.action_tx.send(Action::Key(key)).await.is_err() {
+                                    break;
+                                }
+                            }
+                        }
+                        Some(Ok(CrosstermEvent::Mouse(mouse))) => {
+                            if self.action_tx.send(Action::Mouse(mouse)).await.is_err() {
+                                break;
+                            }
+                        }
+                        Some(Ok(_)) => {}
+                        Some(Err(e)) => {
+                            self.state.push_toast(format!("Input error: {}", e));
+                        }
+                        None => break,
+                    }
+                }
+                action = self.action_rx.recv() => {
+                    if let Some(action) = action {
+                        let should_quit = self.update(action).await?;
+                        if should_quit {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            terminal.draw(|f| crate::ui::render(f, &self.state))?;
+        }
 
         Ok(())
     }
 
-    pub async fn fetch_initial_data(&self) {
+    pub fn fetch_version(&self) {
         let client = self.client.clone();
         let tx = self.action_tx.clone();
         tokio::spawn(async move {
             let res = client.get_version().await.map_err(|e| e.to_string());
             let _ = tx.send(Action::VersionFetched(res)).await;
         });
+    }
 
+    pub fn fetch_config(&self) {
         let client = self.client.clone();
         let tx = self.action_tx.clone();
         tokio::spawn(async move {
             let res = client.get_config().await.map_err(|e| e.to_string());
             let _ = tx.send(Action::ConfigFetched(res)).await;
         });
-
-        self.fetch_proxies();
-        self.fetch_connections();
-        self.fetch_profiles();
-        self.fetch_rules();
     }
 
     pub fn fetch_rules(&self) {
@@ -205,11 +206,12 @@ impl App {
             }
 
             Action::Key(key) => {
+                // Layer 0: Global Application Quit
                 if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c') {
                     return Ok(true);
                 }
 
-                // Realtime Search Input Buffer
+                // Layer 1: Active Input Modal Processing (Search Bar or Subscription Input)
                 if self.state.is_searching {
                     match key.code {
                         KeyCode::Esc => {
@@ -230,12 +232,14 @@ impl App {
                     return Ok(false);
                 }
 
-                // Handle Profile Input Modal Typing
                 if self.state.show_profile_input {
                     match key.code {
                         KeyCode::Esc => self.state.show_profile_input = false,
-                        KeyCode::Tab => {
+                        KeyCode::Tab | KeyCode::Down => {
                             self.state.profile_input_focus = (self.state.profile_input_focus + 1) % 2;
+                        }
+                        KeyCode::Up => {
+                            self.state.profile_input_focus = if self.state.profile_input_focus == 0 { 1 } else { 0 };
                         }
                         KeyCode::Backspace => {
                             if self.state.profile_input_focus == 0 {
@@ -264,6 +268,7 @@ impl App {
                     return Ok(false);
                 }
 
+                // Layer 2: Help Overlay Processing
                 if self.state.show_help {
                     if key.code == KeyCode::Char('?') || key.code == KeyCode::Esc {
                         self.state.show_help = false;
@@ -271,130 +276,150 @@ impl App {
                     return Ok(false);
                 }
 
+                // Layer 3: Global Hotkeys (Usable from anywhere when not typing)
                 match key.code {
                     KeyCode::Char('q') => return Ok(true),
                     KeyCode::Char('?') => self.state.show_help = !self.state.show_help,
 
-                    // Tab Navigation with Tab / Shift+Tab
+                    // Universal Esc: Return Focus to Left Sidebar
+                    KeyCode::Esc => {
+                        self.state.focus_zone = FocusZone::Sidebar;
+                    }
+
+                    // Direct Tab Switch 1-8
+                    KeyCode::Char('1') => { self.state.active_tab = Tab::Dashboard; self.state.focus_zone = FocusZone::Workspace; }
+                    KeyCode::Char('2') => { self.state.active_tab = Tab::Proxies; self.state.focus_zone = FocusZone::Workspace; }
+                    KeyCode::Char('3') => { self.state.active_tab = Tab::Profiles; self.state.focus_zone = FocusZone::Workspace; }
+                    KeyCode::Char('4') => { self.state.active_tab = Tab::Rules; self.state.focus_zone = FocusZone::Workspace; }
+                    KeyCode::Char('5') => { self.state.active_tab = Tab::Connections; self.state.focus_zone = FocusZone::Workspace; }
+                    KeyCode::Char('6') => { self.state.active_tab = Tab::Traffic; self.state.focus_zone = FocusZone::Workspace; }
+                    KeyCode::Char('7') => { self.state.active_tab = Tab::Logs; self.state.focus_zone = FocusZone::Workspace; }
+                    KeyCode::Char('8') => { self.state.active_tab = Tab::Settings; self.state.focus_zone = FocusZone::Workspace; }
+
+                    // Tab / Shift+Tab Navigation
                     KeyCode::Tab => {
-                        if self.state.active_tab == Tab::Settings {
+                        if self.state.focus_zone == FocusZone::Workspace && self.state.active_tab == Tab::Settings {
                             self.state.settings_focus = (self.state.settings_focus + 1) % 7;
                         } else {
                             self.next_tab();
                         }
                     }
                     KeyCode::BackTab => {
-                        if self.state.active_tab == Tab::Settings {
+                        if self.state.focus_zone == FocusZone::Workspace && self.state.active_tab == Tab::Settings {
                             self.state.settings_focus = if self.state.settings_focus == 0 { 6 } else { self.state.settings_focus - 1 };
                         } else {
                             self.prev_tab();
                         }
                     }
 
-                    // Direct Tab Jump 1-8
-                    KeyCode::Char('1') => self.state.active_tab = Tab::Dashboard,
-                    KeyCode::Char('2') => self.state.active_tab = Tab::Proxies,
-                    KeyCode::Char('3') => self.state.active_tab = Tab::Profiles,
-                    KeyCode::Char('4') => self.state.active_tab = Tab::Rules,
-                    KeyCode::Char('5') => self.state.active_tab = Tab::Connections,
-                    KeyCode::Char('6') => self.state.active_tab = Tab::Traffic,
-                    KeyCode::Char('7') => self.state.active_tab = Tab::Logs,
-                    KeyCode::Char('8') => self.state.active_tab = Tab::Settings,
-
-                    // Item Navigation
-                    KeyCode::Up | KeyCode::Char('k') => self.move_selection(-1),
-                    KeyCode::Down | KeyCode::Char('j') => self.move_selection(1),
-
-                    // Left/Right or Vim h/l
-                    KeyCode::Left | KeyCode::Char('h') => {
-                        if self.state.active_tab == Tab::Proxies {
-                            self.state.focus = PaneFocus::Groups;
-                        }
-                    }
-                    KeyCode::Right | KeyCode::Char('l') => {
-                        if self.state.active_tab == Tab::Proxies {
-                            self.state.focus = PaneFocus::Nodes;
-                        }
-                    }
-
-                    // Profile View Hotkeys
-                    KeyCode::Char('a') if self.state.active_tab == Tab::Profiles => {
-                        self.state.profile_name_input.clear();
-                        self.state.profile_url_input.clear();
-                        self.state.profile_input_focus = 0;
-                        self.state.show_profile_input = true;
-                    }
-                    KeyCode::Char('u') if self.state.active_tab == Tab::Profiles => {
-                        if let Some(p) = self.state.profiles.get(self.state.selected_profile_idx) {
-                            if let Some(url) = p.url.clone() {
-                                let name = p.name.clone();
-                                let _ = self.action_tx.try_send(Action::AddProfile { name, url });
-                            }
-                        }
-                    }
-
-                    // Log Buffer Clear
-                    KeyCode::Char('c') if self.state.active_tab == Tab::Logs => {
-                        let _ = self.action_tx.try_send(Action::ClearLogs);
-                    }
-
-                    // Close All Connections
-                    KeyCode::Char('D') if self.state.active_tab == Tab::Connections => {
-                        let _ = self.action_tx.try_send(Action::CloseAllConnections);
-                    }
-
-                    // Key Actions
-                    KeyCode::Enter => {
-                        if self.state.active_tab == Tab::Settings {
-                            if self.state.settings_focus == 6 {
-                                let _ = self.action_tx.try_send(Action::SaveSettings);
-                            } else {
-                                self.state.settings_focus = (self.state.settings_focus + 1) % 7;
-                            }
-                        } else {
-                            self.confirm_selection().await;
-                        }
-                    }
-                    KeyCode::Char(' ') if self.state.active_tab == Tab::Settings => {
-                        if self.state.settings_focus == 0 {
-                            self.state.settings_lang = if self.state.settings_lang == "zh" { "en".into() } else { "zh".into() };
-                        } else if self.state.settings_focus == 3 {
-                            self.state.settings_refresh_ms = match self.state.settings_refresh_ms {
-                                500 => 1000,
-                                1000 => 2000,
-                                _ => 500,
-                            };
-                        }
-                    }
-                    KeyCode::Char('s') | KeyCode::Char('/') => {
-                        self.state.is_searching = !self.state.is_searching;
-                        if !self.state.is_searching {
-                            self.state.search_query.clear();
-                        }
-                    }
-                    KeyCode::Char('t') => self.test_selected_group_latency(),
+                    // Global Core Control Hotkeys
                     KeyCode::Char('m') => self.cycle_mode(),
-                    KeyCode::Char('p') => {
-                        let _ = self.action_tx.try_send(Action::ToggleSystemProxy);
-                    }
-                    KeyCode::Char('x') => {
-                        let _ = self.action_tx.try_send(Action::ToggleTunMode);
-                    }
-                    KeyCode::Char('r') => {
-                        let _ = self.action_tx.try_send(Action::RestartCore);
-                    }
-                    KeyCode::Char('d') => {
-                        if self.state.active_tab == Tab::Profiles {
-                            if let Some(p) = self.state.profiles.get(self.state.selected_profile_idx) {
-                                let name = p.name.clone();
-                                let _ = self.action_tx.try_send(Action::DeleteProfile(name));
-                            }
-                        } else if self.state.active_tab == Tab::Connections {
-                            self.close_selected_connection().await;
-                        }
-                    }
+                    KeyCode::Char('p') => { let _ = self.action_tx.try_send(Action::ToggleSystemProxy); }
+                    KeyCode::Char('x') => { let _ = self.action_tx.try_send(Action::ToggleTunMode); }
+                    KeyCode::Char('r') => { let _ = self.action_tx.try_send(Action::RestartCore); }
 
-                    _ => {}
+                    // Layer 4: Focus Zone & View Specific Keybindings
+                    _ => match self.state.focus_zone {
+                        FocusZone::Sidebar => match key.code {
+                            KeyCode::Up | KeyCode::Char('k') => self.prev_tab(),
+                            KeyCode::Down | KeyCode::Char('j') => self.next_tab(),
+                            KeyCode::Right | KeyCode::Char('l') | KeyCode::Enter => {
+                                self.state.focus_zone = FocusZone::Workspace;
+                            }
+                            _ => {}
+                        },
+                        FocusZone::Workspace => match key.code {
+                            // Movement in Active View List / Table
+                            KeyCode::Up | KeyCode::Char('k') => self.move_selection(-1),
+                            KeyCode::Down | KeyCode::Char('j') => self.move_selection(1),
+
+                            // Top & Bottom Jumps
+                            KeyCode::Char('g') | KeyCode::Home => self.jump_top(),
+                            KeyCode::Char('G') | KeyCode::End => self.jump_bottom(),
+
+                            // Horizontal Pane Movement
+                            KeyCode::Left | KeyCode::Char('h') => {
+                                if self.state.active_tab == Tab::Proxies {
+                                    if self.state.proxy_sub_focus == ProxySubFocus::Nodes {
+                                        self.state.proxy_sub_focus = ProxySubFocus::Groups;
+                                    } else {
+                                        self.state.focus_zone = FocusZone::Sidebar;
+                                    }
+                                } else {
+                                    self.state.focus_zone = FocusZone::Sidebar;
+                                }
+                            }
+                            KeyCode::Right | KeyCode::Char('l') => {
+                                if self.state.active_tab == Tab::Proxies {
+                                    if self.state.proxy_sub_focus == ProxySubFocus::Groups {
+                                        self.state.proxy_sub_focus = ProxySubFocus::Nodes;
+                                    }
+                                }
+                            }
+
+                            // View Action Keybindings
+                            KeyCode::Char('s') | KeyCode::Char('/') => {
+                                self.state.is_searching = !self.state.is_searching;
+                                if !self.state.is_searching {
+                                    self.state.search_query.clear();
+                                }
+                            }
+                            KeyCode::Char('t') => self.test_selected_group_latency(),
+                            KeyCode::Enter => {
+                                if self.state.active_tab == Tab::Settings {
+                                    if self.state.settings_focus == 6 {
+                                        let _ = self.action_tx.try_send(Action::SaveSettings);
+                                    } else {
+                                        self.state.settings_focus = (self.state.settings_focus + 1) % 7;
+                                    }
+                                } else {
+                                    self.confirm_selection().await;
+                                }
+                            }
+                            KeyCode::Char(' ') if self.state.active_tab == Tab::Settings => {
+                                if self.state.settings_focus == 0 {
+                                    self.state.settings_lang = if self.state.settings_lang == "zh" { "en".into() } else { "zh".into() };
+                                } else if self.state.settings_focus == 3 {
+                                    self.state.settings_refresh_ms = match self.state.settings_refresh_ms {
+                                        500 => 1000,
+                                        1000 => 2000,
+                                        _ => 500,
+                                    };
+                                }
+                            }
+                            KeyCode::Char('a') if self.state.active_tab == Tab::Profiles => {
+                                self.state.profile_name_input.clear();
+                                self.state.profile_url_input.clear();
+                                self.state.profile_input_focus = 0;
+                                self.state.show_profile_input = true;
+                            }
+                            KeyCode::Char('u') if self.state.active_tab == Tab::Profiles => {
+                                if let Some(p) = self.state.profiles.get(self.state.selected_profile_idx) {
+                                    if let Some(url) = p.url.clone() {
+                                        let name = p.name.clone();
+                                        let _ = self.action_tx.try_send(Action::AddProfile { name, url });
+                                    }
+                                }
+                            }
+                            KeyCode::Char('d') => {
+                                if self.state.active_tab == Tab::Profiles {
+                                    if let Some(p) = self.state.profiles.get(self.state.selected_profile_idx) {
+                                        let name = p.name.clone();
+                                        let _ = self.action_tx.try_send(Action::DeleteProfile(name));
+                                    }
+                                } else if self.state.active_tab == Tab::Connections {
+                                    self.close_selected_connection().await;
+                                }
+                            }
+                            KeyCode::Char('D') if self.state.active_tab == Tab::Connections => {
+                                let _ = self.action_tx.try_send(Action::CloseAllConnections);
+                            }
+                            KeyCode::Char('c') if self.state.active_tab == Tab::Logs => {
+                                let _ = self.action_tx.try_send(Action::ClearLogs);
+                            }
+                            _ => {}
+                        },
+                    },
                 }
             }
 
@@ -413,6 +438,7 @@ impl App {
                                 let tab_idx = (row - 4) as usize;
                                 if let Some(tab) = Tab::ALL.get(tab_idx) {
                                     self.state.active_tab = *tab;
+                                    self.state.focus_zone = FocusZone::Sidebar;
                                 }
                             }
                         }
@@ -426,109 +452,113 @@ impl App {
                                 let _ = self.action_tx.try_send(Action::ToggleTunMode);
                             }
                         }
-                        // 3. Tab Specific Workspace Clicks
-                        else if self.state.active_tab == Tab::Settings {
-                            if row >= 3 && row <= 5 {
-                                self.state.settings_focus = 0;
-                                self.state.settings_lang = if self.state.settings_lang == "zh" { "en".into() } else { "zh".into() };
-                            } else if row >= 6 && row <= 8 {
-                                self.state.settings_focus = 1;
-                            } else if row >= 9 && row <= 11 {
-                                self.state.settings_focus = 2;
-                            } else if row >= 12 && row <= 14 {
-                                self.state.settings_focus = 3;
-                                self.state.settings_refresh_ms = match self.state.settings_refresh_ms {
-                                    500 => 1000,
-                                    1000 => 2000,
-                                    _ => 500,
-                                };
-                            } else if row >= 15 && row <= 17 {
-                                self.state.settings_focus = 4;
-                            } else if row >= 18 && row <= 20 {
-                                self.state.settings_focus = 5;
-                            } else if row >= 21 {
-                                self.state.settings_focus = 6;
-                                let _ = self.action_tx.try_send(Action::SaveSettings);
-                            }
-                        } else if self.state.active_tab == Tab::Profiles {
-                            if row <= 5 {
-                                if col >= 18 && col < 35 {
-                                    self.state.profile_name_input.clear();
-                                    self.state.profile_url_input.clear();
-                                    self.state.profile_input_focus = 0;
-                                    self.state.show_profile_input = true;
-                                } else if col >= 35 && col < 52 {
-                                    if let Some(p) = self.state.profiles.get(self.state.selected_profile_idx) {
-                                        if let Some(url) = p.url.clone() {
+                        // 3. Tab Specific Workspace Clicks (Switches Focus to Workspace)
+                        else {
+                            self.state.focus_zone = FocusZone::Workspace;
+
+                            if self.state.active_tab == Tab::Settings {
+                                if row >= 3 && row <= 5 {
+                                    self.state.settings_focus = 0;
+                                    self.state.settings_lang = if self.state.settings_lang == "zh" { "en".into() } else { "zh".into() };
+                                } else if row >= 6 && row <= 8 {
+                                    self.state.settings_focus = 1;
+                                } else if row >= 9 && row <= 11 {
+                                    self.state.settings_focus = 2;
+                                } else if row >= 12 && row <= 14 {
+                                    self.state.settings_focus = 3;
+                                    self.state.settings_refresh_ms = match self.state.settings_refresh_ms {
+                                        500 => 1000,
+                                        1000 => 2000,
+                                        _ => 500,
+                                    };
+                                } else if row >= 15 && row <= 17 {
+                                    self.state.settings_focus = 4;
+                                } else if row >= 18 && row <= 20 {
+                                    self.state.settings_focus = 5;
+                                } else if row >= 21 {
+                                    self.state.settings_focus = 6;
+                                    let _ = self.action_tx.try_send(Action::SaveSettings);
+                                }
+                            } else if self.state.active_tab == Tab::Profiles {
+                                if row <= 5 {
+                                    if col >= 18 && col < 35 {
+                                        self.state.profile_name_input.clear();
+                                        self.state.profile_url_input.clear();
+                                        self.state.profile_input_focus = 0;
+                                        self.state.show_profile_input = true;
+                                    } else if col >= 35 && col < 52 {
+                                        if let Some(p) = self.state.profiles.get(self.state.selected_profile_idx) {
+                                            if let Some(url) = p.url.clone() {
+                                                let name = p.name.clone();
+                                                let _ = self.action_tx.try_send(Action::AddProfile { name, url });
+                                            }
+                                        }
+                                    } else if col >= 52 && col < 68 {
+                                        if let Some(p) = self.state.profiles.get(self.state.selected_profile_idx) {
                                             let name = p.name.clone();
-                                            let _ = self.action_tx.try_send(Action::AddProfile { name, url });
+                                            let _ = self.action_tx.try_send(Action::DeleteProfile(name));
                                         }
                                     }
-                                } else if col >= 52 && col < 68 {
-                                    if let Some(p) = self.state.profiles.get(self.state.selected_profile_idx) {
-                                        let name = p.name.clone();
-                                        let _ = self.action_tx.try_send(Action::DeleteProfile(name));
-                                    }
-                                }
-                            } else {
-                                let click_idx = (row - 6) as usize;
-                                if click_idx < self.state.profiles.len() {
-                                    self.state.selected_profile_idx = click_idx;
-                                    self.confirm_selection().await;
-                                }
-                            }
-                        } else if self.state.active_tab == Tab::Logs {
-                            if row <= 5 {
-                                if col >= 30 && col < 36 {
-                                    let _ = self.action_tx.try_send(Action::SetLogFilter("all".into()));
-                                } else if col >= 37 && col < 43 {
-                                    let _ = self.action_tx.try_send(Action::SetLogFilter("info".into()));
-                                } else if col >= 44 && col < 50 {
-                                    let _ = self.action_tx.try_send(Action::SetLogFilter("warn".into()));
-                                } else if col >= 51 && col < 57 {
-                                    let _ = self.action_tx.try_send(Action::SetLogFilter("error".into()));
-                                } else if col >= 58 && col < 64 {
-                                    let _ = self.action_tx.try_send(Action::SetLogFilter("debug".into()));
-                                } else if col >= 65 {
-                                    let _ = self.action_tx.try_send(Action::ClearLogs);
-                                }
-                            }
-                        } else if self.state.active_tab == Tab::Proxies {
-                            if col < 45 {
-                                self.state.focus = PaneFocus::Groups;
-                                if row >= 4 {
-                                    let click_idx = (row - 4) as usize;
-                                    if click_idx < self.state.proxy_groups.len() {
-                                        self.state.selected_group_idx = click_idx;
-                                        self.state.selected_node_idx = 0;
-                                    }
-                                }
-                            } else {
-                                self.state.focus = PaneFocus::Nodes;
-                                if row >= 4 {
-                                    let click_idx = (row - 4) as usize;
-                                    let nodes = self.state.current_group_nodes();
-                                    if click_idx < nodes.len() {
-                                        self.state.selected_node_idx = click_idx;
+                                } else {
+                                    let click_idx = (row - 6) as usize;
+                                    if click_idx < self.state.profiles.len() {
+                                        self.state.selected_profile_idx = click_idx;
                                         self.confirm_selection().await;
                                     }
                                 }
-                            }
-                        } else if self.state.active_tab == Tab::Rules {
-                            if row >= 4 {
-                                let click_idx = (row - 4) as usize;
-                                if let Some(resp) = &self.state.rules_resp {
-                                    if click_idx < resp.rules.len() {
-                                        self.state.selected_rule_idx = click_idx;
+                            } else if self.state.active_tab == Tab::Logs {
+                                if row <= 5 {
+                                    if col >= 30 && col < 36 {
+                                        let _ = self.action_tx.try_send(Action::SetLogFilter("all".into()));
+                                    } else if col >= 37 && col < 43 {
+                                        let _ = self.action_tx.try_send(Action::SetLogFilter("info".into()));
+                                    } else if col >= 44 && col < 50 {
+                                        let _ = self.action_tx.try_send(Action::SetLogFilter("warn".into()));
+                                    } else if col >= 51 && col < 57 {
+                                        let _ = self.action_tx.try_send(Action::SetLogFilter("error".into()));
+                                    } else if col >= 58 && col < 64 {
+                                        let _ = self.action_tx.try_send(Action::SetLogFilter("debug".into()));
+                                    } else if col >= 65 {
+                                        let _ = self.action_tx.try_send(Action::ClearLogs);
                                     }
                                 }
-                            }
-                        } else if self.state.active_tab == Tab::Connections {
-                            if row >= 2 {
-                                let click_idx = (row - 2) as usize;
-                                if let Some(resp) = &self.state.connections_resp {
-                                    if click_idx < resp.connections.len() {
-                                        self.state.selected_conn_idx = click_idx;
+                            } else if self.state.active_tab == Tab::Proxies {
+                                if col < 45 {
+                                    self.state.proxy_sub_focus = ProxySubFocus::Groups;
+                                    if row >= 4 {
+                                        let click_idx = (row - 4) as usize;
+                                        if click_idx < self.state.proxy_groups.len() {
+                                            self.state.selected_group_idx = click_idx;
+                                            self.state.selected_node_idx = 0;
+                                        }
+                                    }
+                                } else {
+                                    self.state.proxy_sub_focus = ProxySubFocus::Nodes;
+                                    if row >= 4 {
+                                        let click_idx = (row - 4) as usize;
+                                        let nodes = self.state.current_group_nodes();
+                                        if click_idx < nodes.len() {
+                                            self.state.selected_node_idx = click_idx;
+                                            self.confirm_selection().await;
+                                        }
+                                    }
+                                }
+                            } else if self.state.active_tab == Tab::Rules {
+                                if row >= 4 {
+                                    let click_idx = (row - 4) as usize;
+                                    if let Some(resp) = &self.state.rules_resp {
+                                        if click_idx < resp.rules.len() {
+                                            self.state.selected_rule_idx = click_idx;
+                                        }
+                                    }
+                                }
+                            } else if self.state.active_tab == Tab::Connections {
+                                if row >= 4 {
+                                    let click_idx = (row - 4) as usize;
+                                    if let Some(resp) = &self.state.connections_resp {
+                                        if click_idx < resp.connections.len() {
+                                            self.state.selected_conn_idx = click_idx;
+                                        }
                                     }
                                 }
                             }
@@ -538,16 +568,27 @@ impl App {
                 }
             }
 
-            Action::NextTab => self.next_tab(),
-            Action::PrevTab => self.prev_tab(),
-            Action::SelectTab(idx) => {
-                if let Some(tab) = Tab::ALL.get(idx) {
-                    self.state.active_tab = *tab;
-                }
-            }
-
             Action::VersionFetched(res) => match res {
                 Ok(v) => self.state.version = Some(v),
+                Err(e) => self.state.status_error = Some(e),
+            },
+
+            Action::ConfigFetched(res) => match res {
+                Ok(cfg) => self.state.config = Some(cfg),
+                Err(e) => self.state.status_error = Some(e),
+            },
+
+            Action::ProxiesFetched(res) => match res {
+                Ok(resp) => {
+                    self.state.proxy_groups = resp
+                        .proxies
+                        .iter()
+                        .filter(|(_, p)| p.proxy_type.eq_ignore_ascii_case("Selector") || p.proxy_type.eq_ignore_ascii_case("URLTest") || p.all.is_some())
+                        .map(|(name, _)| name.clone())
+                        .collect();
+                    self.state.proxy_groups.sort();
+                    self.state.proxies_resp = Some(resp);
+                }
                 Err(e) => self.state.status_error = Some(e),
             },
 
@@ -588,10 +629,9 @@ impl App {
                 });
             }
 
-            Action::ActivateProfile(name) => {
-                self.state.push_toast(format!("Activating profile '{}'...", name));
-                let client = self.client.clone();
+            Action::UpdateProfile(name) => {
                 let tx = self.action_tx.clone();
+                let client = self.client.clone();
                 let target_name = name.clone();
                 tokio::spawn(async move {
                     if let Ok(dir) = crate::config::profile::ProfileManager::profiles_dir() {
@@ -660,17 +700,22 @@ impl App {
             }
 
             Action::ToggleTunMode => {
-                let target = !self.state.is_tun_enabled;
-                let client = self.client.clone();
-                let tx = self.action_tx.clone();
-                self.state.push_toast(format!("Toggling TUN mode to {}...", target));
-                tokio::spawn(async move {
-                    if client.set_tun_enabled(target).await.is_ok() {
-                        if let Ok(c) = client.get_config().await {
-                            let _ = tx.send(Action::ConfigFetched(Ok(c))).await;
+                if !self.state.is_tun_privileged {
+                    self.state.push_toast("TUN failed: require root or cap_net_admin capability".to_string());
+                } else {
+                    let client = self.client.clone();
+                    let new_state = !self.state.is_tun_enabled;
+                    let tx = self.action_tx.clone();
+                    tokio::spawn(async move {
+                        if client.set_tun_enabled(new_state).await.is_ok() {
+                            let _ = tx.send(Action::FetchConfig).await;
                         }
-                    }
-                });
+                    });
+                }
+            }
+
+            Action::FetchConfig => {
+                self.fetch_config();
             }
 
             Action::SaveSettings => {
@@ -696,92 +741,48 @@ impl App {
                 let tx = self.action_tx.clone();
                 tokio::spawn(async move {
                     let _ = crate::core::CoreProcess::restart();
-                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-                    let _ = tx.send(Action::Tick).await;
+                    tokio::time::sleep(Duration::from_secs(1)).await;
+                    let _ = tx.send(Action::FetchVersion).await;
+                    let _ = tx.send(Action::FetchConfig).await;
                 });
             }
 
-            Action::ConfigFetched(res) => match res {
-                Ok(c) => self.state.config = Some(c),
-                Err(e) => self.state.status_error = Some(e),
-            },
+            Action::FetchVersion => self.fetch_version(),
 
-            Action::ProxiesFetched(res) => match res {
-                Ok(resp) => {
-                    // Extract sorted proxy groups (Selectors / URLTest)
-                    let mut groups: Vec<String> = resp
-                        .proxies
-                        .iter()
-                        .filter(|(_, item)| item.proxy_type == "Selector" || item.proxy_type == "URLTest" || item.name == "GLOBAL")
-                        .map(|(k, _)| k.clone())
-                        .collect();
-                    groups.sort();
-
-                    self.state.proxy_groups = groups;
-                    self.state.proxies_resp = Some(resp);
-
-                    // Clamp group and node indexes
-                    if !self.state.proxy_groups.is_empty() {
-                        if self.state.selected_group_idx >= self.state.proxy_groups.len() {
-                            self.state.selected_group_idx = self.state.proxy_groups.len() - 1;
-                        }
-                        let nodes = self.state.current_group_nodes();
-                        if !nodes.is_empty() && self.state.selected_node_idx >= nodes.len() {
-                            self.state.selected_node_idx = nodes.len() - 1;
-                        }
-                    }
+            Action::TrafficReceived(msg) => {
+                self.state.current_traffic = msg.clone();
+                self.state.up_history.push_back(msg.up);
+                if self.state.up_history.len() > 40 {
+                    self.state.up_history.pop_front();
                 }
-                Err(e) => self.state.status_error = Some(e),
-            },
+                self.state.down_history.push_back(msg.down);
+                if self.state.down_history.len() > 40 {
+                    self.state.down_history.pop_front();
+                }
+            }
+
+            Action::LogReceived(log) => {
+                self.state.logs.push_back(log);
+                if self.state.logs.len() > 500 {
+                    self.state.logs.pop_front();
+                }
+            }
 
             Action::ConnectionsFetched(res) => match res {
                 Ok(resp) => {
                     self.state.connections_resp = Some(resp);
-                    if let Some(c) = &self.state.connections_resp {
-                        if !c.connections.is_empty() && self.state.selected_conn_idx >= c.connections.len() {
-                            self.state.selected_conn_idx = c.connections.len() - 1;
+                    if let Some(resp) = &self.state.connections_resp {
+                        if !resp.connections.is_empty() && self.state.selected_conn_idx >= resp.connections.len() {
+                            self.state.selected_conn_idx = resp.connections.len() - 1;
                         }
                     }
                 }
                 Err(e) => self.state.status_error = Some(e),
             },
 
-            Action::TrafficReceived(msg) => {
-                self.state.current_traffic = msg.clone();
-                self.state.up_history.pop_front();
-                self.state.up_history.push_back(msg.up);
-                self.state.down_history.pop_front();
-                self.state.down_history.push_back(msg.down);
-            }
-
-            Action::LogReceived(log) => {
-                if self.state.logs.len() >= 500 {
-                    self.state.logs.pop_front();
-                }
-                self.state.logs.push_back(log);
-            }
-
             Action::LatencyResult { node, result } => {
-                match result {
-                    Ok(ms) => {
-                        self.state.latency_map.insert(node.clone(), Some(ms));
-                    }
-                    Err(_) => {
-                        self.state.latency_map.insert(node, None);
-                    }
-                }
-            }
-
-            Action::ChangeMode(mode) => {
-                let client = self.client.clone();
-                let tx = self.action_tx.clone();
-                tokio::spawn(async move {
-                    if let Ok(()) = client.set_mode(&mode).await {
-                        if let Ok(c) = client.get_config().await {
-                            let _ = tx.send(Action::ConfigFetched(Ok(c))).await;
-                        }
-                    }
-                });
+                let delay = result.ok();
+                self.state.latency_map.insert(node, delay);
             }
 
             _ => {}
@@ -792,19 +793,16 @@ impl App {
 
     fn move_selection(&mut self, delta: i32) {
         match self.state.active_tab {
-            Tab::Proxies => match self.state.focus {
-                PaneFocus::Groups => {
+            Tab::Proxies => match self.state.proxy_sub_focus {
+                ProxySubFocus::Groups => {
                     let len = self.state.proxy_groups.len();
                     if len > 0 {
-                        let new_idx = (self.state.selected_group_idx as i32 + delta)
+                        self.state.selected_group_idx = (self.state.selected_group_idx as i32 + delta)
                             .clamp(0, len as i32 - 1) as usize;
-                        if new_idx != self.state.selected_group_idx {
-                            self.state.selected_group_idx = new_idx;
-                            self.state.selected_node_idx = 0; // Reset node selection on group change
-                        }
+                        self.state.selected_node_idx = 0;
                     }
                 }
-                PaneFocus::Nodes => {
+                ProxySubFocus::Nodes => {
                     let nodes = self.state.current_group_nodes();
                     let len = nodes.len();
                     if len > 0 {
@@ -812,7 +810,6 @@ impl App {
                             .clamp(0, len as i32 - 1) as usize;
                     }
                 }
-                _ => {}
             },
             Tab::Profiles => {
                 let len = self.state.profiles.len();
@@ -840,93 +837,155 @@ impl App {
                 }
             }
             Tab::Logs => {
+                let current = self.state.log_scroll as i32;
+                self.state.log_scroll = (current + delta).max(0) as usize;
+            }
+            Tab::Settings => {
+                self.state.settings_focus = (self.state.settings_focus as i32 + delta).rem_euclid(7) as usize;
+            }
+            _ => {}
+        }
+    }
+
+    fn jump_top(&mut self) {
+        match self.state.active_tab {
+            Tab::Proxies => match self.state.proxy_sub_focus {
+                ProxySubFocus::Groups => self.state.selected_group_idx = 0,
+                ProxySubFocus::Nodes => self.state.selected_node_idx = 0,
+            },
+            Tab::Profiles => self.state.selected_profile_idx = 0,
+            Tab::Rules => self.state.selected_rule_idx = 0,
+            Tab::Connections => self.state.selected_conn_idx = 0,
+            Tab::Logs => self.state.log_scroll = 0,
+            Tab::Settings => self.state.settings_focus = 0,
+            _ => {}
+        }
+    }
+
+    fn jump_bottom(&mut self) {
+        match self.state.active_tab {
+            Tab::Proxies => match self.state.proxy_sub_focus {
+                ProxySubFocus::Groups => {
+                    let len = self.state.proxy_groups.len();
+                    if len > 0 { self.state.selected_group_idx = len - 1; }
+                }
+                ProxySubFocus::Nodes => {
+                    let len = self.state.current_group_nodes().len();
+                    if len > 0 { self.state.selected_node_idx = len - 1; }
+                }
+            },
+            Tab::Profiles => {
+                let len = self.state.profiles.len();
+                if len > 0 { self.state.selected_profile_idx = len - 1; }
+            }
+            Tab::Rules => {
+                if let Some(resp) = &self.state.rules_resp {
+                    let len = resp.rules.len();
+                    if len > 0 { self.state.selected_rule_idx = len - 1; }
+                }
+            }
+            Tab::Connections => {
+                if let Some(resp) = &self.state.connections_resp {
+                    let len = resp.connections.len();
+                    if len > 0 { self.state.selected_conn_idx = len - 1; }
+                }
+            }
+            Tab::Logs => {
                 let len = self.state.logs.len();
-                if len > 0 {
-                    self.state.log_scroll = (self.state.log_scroll as i32 + delta)
-                        .clamp(0, len as i32 - 1) as usize;
+                if len > 0 { self.state.log_scroll = len - 1; }
+            }
+            Tab::Settings => self.state.settings_focus = 6,
+            _ => {}
+        }
+    }
+
+    async fn confirm_selection(&mut self) {
+        match self.state.active_tab {
+            Tab::Proxies => {
+                let group = match self.state.selected_group_name() {
+                    Some(g) => g.to_string(),
+                    None => return,
+                };
+                let nodes = self.state.current_group_nodes();
+                let node = match nodes.get(self.state.selected_node_idx) {
+                    Some(n) => n.to_string(),
+                    None => return,
+                };
+
+                let _ = self.client.select_proxy(&group, &node).await;
+                self.fetch_proxies();
+                self.state.push_toast(format!("Selected '{}' -> '{}'", group, node));
+            }
+            Tab::Profiles => {
+                if let Some(profile) = self.state.profiles.get(self.state.selected_profile_idx) {
+                    let name = profile.name.clone();
+                    let tx = self.action_tx.clone();
+                    let _ = tx.send(Action::UpdateProfile(name)).await;
                 }
             }
             _ => {}
         }
     }
 
-    async fn confirm_selection(&mut self) {
-        if self.state.active_tab == Tab::Profiles {
-            if let Some(p) = self.state.profiles.get(self.state.selected_profile_idx) {
-                let name = p.name.clone();
-                let _ = self.action_tx.try_send(Action::ActivateProfile(name));
-            }
-        } else if self.state.active_tab == Tab::Proxies {
-            if let Some(group) = self.state.selected_group_name().map(String::from) {
-                let nodes = self.state.current_group_nodes();
-                if let Some(node) = nodes.get(self.state.selected_node_idx).cloned() {
-                    let client = self.client.clone();
-                    let tx = self.action_tx.clone();
-                    self.state.push_toast(format!("Selecting '{}' in '{}'", node, group));
-                    tokio::spawn(async move {
-                        if client.select_proxy(&group, &node).await.is_ok() {
-                            if let Ok(resp) = client.get_proxies().await {
-                                let _ = tx.send(Action::ProxiesFetched(Ok(resp))).await;
-                            }
-                        }
-                    });
-                }
-            }
-        }
-    }
-
-    fn test_selected_group_latency(&mut self) {
-        if self.state.active_tab == Tab::Proxies {
-            let nodes = self.state.current_group_nodes();
-            if nodes.is_empty() {
-                return;
-            }
-            self.state.push_toast("Testing latencies...".to_string());
-            let client = self.client.clone();
-            let tx = self.action_tx.clone();
-            tokio::spawn(async move {
-                for node in nodes {
-                    let res = client.test_delay(&node, None, Some(2000)).await.map_err(|e| e.to_string());
-                    let _ = tx.send(Action::LatencyResult { node, result: res }).await;
-                }
-            });
-        }
-    }
-
     fn cycle_mode(&mut self) {
-        if let Some(config) = &self.state.config {
-            let current = config.mode.as_deref().unwrap_or("Rule");
-            let next_mode = match current {
-                "Rule" => "Global",
-                "Global" => "Direct",
-                _ => "Rule",
-            };
-            self.state.push_toast(format!("Switching mode to {}", next_mode));
-            let client = self.client.clone();
-            let tx = self.action_tx.clone();
-            let target_mode = next_mode.to_string();
-            tokio::spawn(async move {
-                if let Ok(()) = client.set_mode(&target_mode).await {
-                    if let Ok(c) = client.get_config().await {
-                        let _ = tx.send(Action::ConfigFetched(Ok(c))).await;
-                    }
-                }
-            });
-        }
+        let current = self
+            .state
+            .config
+            .as_ref()
+            .and_then(|c| c.mode.clone())
+            .unwrap_or_else(|| "Rule".into());
+
+        let next = match current.to_lowercase().as_str() {
+            "rule" => "Global",
+            "global" => "Direct",
+            _ => "Rule",
+        };
+
+        let client = self.client.clone();
+        let tx = self.action_tx.clone();
+        let next_mode = next.to_string();
+        tokio::spawn(async move {
+            if client.set_mode(&next_mode).await.is_ok() {
+                let _ = tx.send(Action::FetchConfig).await;
+            }
+        });
+    }
+
+    fn test_selected_group_latency(&self) {
+        let _group = match self.state.selected_group_name() {
+            Some(g) => g.to_string(),
+            None => return,
+        };
+
+        let nodes = self.state.current_group_nodes();
+        let client = self.client.clone();
+        let tx = self.action_tx.clone();
+
+        tokio::spawn(async move {
+            for node in nodes {
+                let c = client.clone();
+                let t = tx.clone();
+                let node_name = node.clone();
+                tokio::spawn(async move {
+                    let delay = c.test_delay(&node_name, None, None).await.map_err(|e| e.to_string());
+                    let _ = t.send(Action::LatencyResult { node: node_name, result: delay }).await;
+                });
+            }
+        });
     }
 
     async fn close_selected_connection(&mut self) {
-        if self.state.active_tab == Tab::Connections {
-            if let Some(resp) = &self.state.connections_resp {
-                if let Some(conn) = resp.connections.get(self.state.selected_conn_idx) {
-                    let id = conn.id.clone();
-                    let client = self.client.clone();
-                    self.state.push_toast(format!("Closing connection {}", &id[..8.min(id.len())]));
-                    tokio::spawn(async move {
-                        let _ = client.close_connection(&id).await;
-                    });
-                }
-            }
+        let id = match &self.state.connections_resp {
+            Some(resp) => match resp.connections.get(self.state.selected_conn_idx) {
+                Some(conn) => conn.id.clone(),
+                None => return,
+            },
+            None => return,
+        };
+
+        if self.client.close_connection(&id).await.is_ok() {
+            self.fetch_connections();
+            self.state.push_toast("Closed connection".to_string());
         }
     }
 }

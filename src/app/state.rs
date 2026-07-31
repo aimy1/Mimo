@@ -1,4 +1,5 @@
 use crate::api::models::*;
+use crate::config::Config;
 use std::collections::{HashMap, VecDeque};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -39,21 +40,24 @@ impl Tab {
     }
 }
 
+/// Main UI Focus Zone: Left Sidebar Navigation vs Main Workspace
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(dead_code)]
-pub enum PaneFocus {
+pub enum FocusZone {
+    Sidebar,
+    Workspace,
+}
+
+/// Sub-focus inside Proxies View
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProxySubFocus {
     Groups,
     Nodes,
-    Profiles,
-    Rules,
-    Connections,
-    Logs,
-    Settings,
 }
 
 pub struct AppState {
     pub active_tab: Tab,
-    pub focus: PaneFocus,
+    pub focus_zone: FocusZone,
+    pub proxy_sub_focus: ProxySubFocus,
     pub show_help: bool,
 
     // Hardware & System Metrics
@@ -77,14 +81,15 @@ pub struct AppState {
     pub settings_http_port: u16,
     pub settings_socks_port: u16,
     pub settings_test_url: String,
-    pub settings_focus: usize,
+    pub settings_focus: usize, // 0: Lang, 1: ApiUrl, 2: Secret, 3: Refresh, 4: Ports, 5: TestUrl, 6: SaveBtn
 
-    // Mihomo Overview Data
+    // API Data
     pub version: Option<VersionInfo>,
     pub config: Option<MihomoConfig>,
-    pub status_error: Option<String>,
+    pub proxies_resp: Option<ProxiesResponse>,
+    pub connections_resp: Option<ConnectionsResponse>,
 
-    // Core & System Proxy / TUN Status
+    // System Proxy & TUN status
     pub is_sysproxy_enabled: bool,
     pub is_tun_enabled: bool,
     pub is_tun_privileged: bool,
@@ -97,37 +102,39 @@ pub struct AppState {
     pub profile_url_input: String,
     pub profile_input_focus: usize, // 0 for name, 1 for url
 
-    // Proxies Data
-    pub proxies_resp: Option<ProxiesResponse>,
+    // Proxies Selection Indices
     pub proxy_groups: Vec<String>,
     pub selected_group_idx: usize,
     pub selected_node_idx: usize,
     pub latency_map: HashMap<String, Option<u16>>,
 
-    // Connections Data
-    pub connections_resp: Option<ConnectionsResponse>,
+    // Connections Selection Index
     pub selected_conn_idx: usize,
 
-    // Traffic Data
+    // Status Error Message
+    pub status_error: Option<String>,
+
+    // Realtime Traffic Data
     pub current_traffic: TrafficMessage,
     pub up_history: VecDeque<u64>,
     pub down_history: VecDeque<u64>,
 
-    // Logs Data
+    // Logs Data Stream
     pub logs: VecDeque<LogMessage>,
     pub log_scroll: usize,
     pub log_filter: String,
 
-    // Toast / Message
+    // Toast Message
     pub toast: Option<(String, std::time::Instant)>,
 }
 
 impl Default for AppState {
     fn default() -> Self {
-        let config = crate::config::Config::load().unwrap_or_default();
+        let config = Config::load().unwrap_or_default();
         Self {
             active_tab: Tab::Dashboard,
-            focus: PaneFocus::Groups,
+            focus_zone: FocusZone::Workspace,
+            proxy_sub_focus: ProxySubFocus::Groups,
             show_help: false,
             cpu_usage: 0.0,
             memory_used_bytes: 0,
@@ -146,6 +153,7 @@ impl Default for AppState {
             settings_focus: 0,
             version: None,
             config: None,
+            proxies_resp: None,
             status_error: None,
             is_sysproxy_enabled: crate::core::SystemProxy::is_enabled(),
             is_tun_enabled: false,
@@ -156,7 +164,6 @@ impl Default for AppState {
             profile_name_input: String::new(),
             profile_url_input: String::new(),
             profile_input_focus: 0,
-            proxies_resp: None,
             proxy_groups: Vec::new(),
             selected_group_idx: 0,
             selected_node_idx: 0,
@@ -181,7 +188,7 @@ impl AppState {
 
     pub fn check_toast_expiration(&mut self) {
         if let Some((_, created_at)) = &self.toast {
-            if created_at.elapsed() > std::time::Duration::from_secs(3) {
+            if created_at.elapsed() > std::time::Duration::from_secs(4) {
                 self.toast = None;
             }
         }
@@ -192,15 +199,21 @@ impl AppState {
     }
 
     pub fn current_group_nodes(&self) -> Vec<String> {
-        if let Some(group_name) = self.selected_group_name() {
-            if let Some(resp) = &self.proxies_resp {
-                if let Some(group_item) = resp.proxies.get(group_name) {
-                    if let Some(all) = &group_item.all {
-                        return all.clone();
-                    }
-                }
-            }
-        }
-        Vec::new()
+        let group_name = match self.selected_group_name() {
+            Some(g) => g,
+            None => return Vec::new(),
+        };
+
+        let resp = match &self.proxies_resp {
+            Some(r) => r,
+            None => return Vec::new(),
+        };
+
+        let group_item = match resp.proxies.get(group_name) {
+            Some(item) => item,
+            None => return Vec::new(),
+        };
+
+        group_item.all.clone().unwrap_or_default()
     }
 }

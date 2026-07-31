@@ -1,4 +1,4 @@
-use crate::app::{AppState, PaneFocus};
+use crate::app::AppState;
 use crate::ui::theme::Theme;
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
@@ -14,13 +14,13 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .constraints([Constraint::Percentage(30), Constraint::Percentage(70)])
         .split(area);
 
-    let groups_border_style = if state.focus == PaneFocus::Groups {
+    let groups_border_style = if state.focus_zone == crate::app::state::FocusZone::Workspace && state.proxy_sub_focus == crate::app::state::ProxySubFocus::Groups {
         Style::default().fg(Theme::BORDER_FOCUS)
     } else {
         Style::default().fg(Theme::BORDER)
     };
 
-    let nodes_border_style = if state.focus == PaneFocus::Nodes {
+    let nodes_border_style = if state.focus_zone == crate::app::state::FocusZone::Workspace && state.proxy_sub_focus == crate::app::state::ProxySubFocus::Nodes {
         Style::default().fg(Theme::BORDER_FOCUS)
     } else {
         Style::default().fg(Theme::BORDER)

@@ -1,4 +1,6 @@
-use crate::app::AppState;
+use crate::app::state::{AppState, FocusZone};
+use crate::ui::i18n::{t, Language};
+use crate::ui::theme::Theme;
 use ratatui::{
     layout::Rect,
     style::{Color, Modifier, Style},
@@ -8,38 +10,43 @@ use ratatui::{
 };
 
 pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
-    let lang = crate::ui::i18n::Language::from_str(&state.settings_lang);
+    let lang = Language::from_str(&state.settings_lang);
+
+    let focus_tag = match state.focus_zone {
+        FocusZone::Sidebar => Span::styled(" [焦点: 菜单] ", Style::default().fg(Color::Rgb(17, 17, 27)).bg(Theme::BORDER_FOCUS).add_modifier(Modifier::BOLD)),
+        FocusZone::Workspace => Span::styled(" [焦点: 工作区] ", Style::default().fg(Color::Rgb(17, 17, 27)).bg(Color::Rgb(137, 220, 235)).add_modifier(Modifier::BOLD)),
+    };
+
     let mut spans = vec![
-        Span::styled(" Tab/1-7", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-        Span::raw(format!(":{}  ", crate::ui::i18n::t("footer_nav", lang))),
-        Span::styled("j/k/Scroll", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-        Span::raw(format!(":{}  ", crate::ui::i18n::t("footer_scroll", lang))),
-        Span::styled("Enter/Click", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-        Span::raw(format!(":{}  ", crate::ui::i18n::t("footer_select", lang))),
-        Span::styled("t", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-        Span::raw(format!(":{}  ", crate::ui::i18n::t("footer_test", lang))),
-        Span::styled("m", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-        Span::raw(format!(":{}  ", crate::ui::i18n::t("footer_mode", lang))),
-        Span::styled("p", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-        Span::raw(format!(":{}  ", crate::ui::i18n::t("footer_sysproxy", lang))),
-        Span::styled("x", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-        Span::raw(format!(":{}  ", crate::ui::i18n::t("footer_tun", lang))),
-        Span::styled("r", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-        Span::raw(format!(":{}  ", crate::ui::i18n::t("footer_restart", lang))),
-        Span::styled("?", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-        Span::raw(format!(":{}  ", crate::ui::i18n::t("footer_help", lang))),
-        Span::styled("q", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-        Span::raw(format!(":{}", crate::ui::i18n::t("footer_quit", lang))),
+        focus_tag,
+        Span::raw(" "),
+        Span::styled("Tab/1-8", Style::default().fg(Color::Yellow)),
+        Span::styled(format!(":{} ", t("footer_switch_tab", lang)), Style::default().fg(Color::DarkGray)),
+        Span::styled("Esc", Style::default().fg(Color::Yellow)),
+        Span::raw(":返回侧边栏 "),
+        Span::styled("h/l/←/→", Style::default().fg(Color::Yellow)),
+        Span::raw(":切换分栏 "),
+        Span::styled("j/k/↑/↓", Style::default().fg(Color::Yellow)),
+        Span::raw(":移动 "),
+        Span::styled("g/G", Style::default().fg(Color::Yellow)),
+        Span::raw(":顶/底 "),
+        Span::styled("m", Style::default().fg(Color::Yellow)),
+        Span::raw(":模式 "),
+        Span::styled("p", Style::default().fg(Color::Yellow)),
+        Span::raw(":系统代理 "),
+        Span::styled("x", Style::default().fg(Color::Yellow)),
+        Span::raw(":TUN "),
+        Span::styled("?", Style::default().fg(Color::Yellow)),
+        Span::raw(":帮助 "),
     ];
 
-    if let Some((msg, _)) = &state.toast {
-        spans.push(Span::raw(" | "));
+    if let Some((toast_msg, _)) = &state.toast {
         spans.push(Span::styled(
-            format!(" {} ", msg),
-            Style::default().fg(Color::Black).bg(Color::Yellow).add_modifier(Modifier::BOLD),
+            format!(" | 🔔 {}", toast_msg),
+            Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
         ));
     }
 
-    let footer = Paragraph::new(Line::from(spans));
-    f.render_widget(footer, area);
+    let paragraph = Paragraph::new(Line::from(spans));
+    f.render_widget(paragraph, area);
 }

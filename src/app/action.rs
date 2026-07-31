@@ -19,6 +19,9 @@ pub enum Action {
     TrafficReceived(TrafficMessage),
     LogReceived(LogMessage),
     LatencyResult { node: String, result: Result<u16, String> },
+    // Core Overview Actions
+    FetchVersion,
+    FetchConfig,
     // Connections Actions
     FetchConnections,
     // Rules Actions

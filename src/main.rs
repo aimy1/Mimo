@@ -17,7 +17,6 @@ use crossterm::{
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
 use std::io;
-use std::time::Duration;
 
 #[derive(Parser)]
 #[command(name = "mimo")]
@@ -180,31 +179,15 @@ async fn main() -> anyhow::Result<()> {
     run_tui(config, client).await
 }
 
-async fn run_tui(config: Config, client: MihomoClient) -> anyhow::Result<()> {
+async fn run_tui(_config: Config, _client: MihomoClient) -> anyhow::Result<()> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let mut app = App::new(config, client);
-
-    // Initialize async event loops and background streams
-    app.run_event_loop().await?;
-
-    let mut should_quit = false;
-
-    while !should_quit {
-        // Render Frame
-        terminal.draw(|f| {
-            ui::render(f, &app.state);
-        })?;
-
-        // Receive next action from channel with timeout
-        if let Ok(Some(action)) = tokio::time::timeout(Duration::from_millis(50), app.action_rx.recv()).await {
-            should_quit = app.update(action).await?;
-        }
-    }
+    let mut app = App::new()?;
+    let res = app.run(&mut terminal).await;
 
     // Clean terminal state on exit
     disable_raw_mode()?;
@@ -216,5 +199,5 @@ async fn run_tui(config: Config, client: MihomoClient) -> anyhow::Result<()> {
     terminal.show_cursor()?;
 
     println!("Mimo closed.");
-    Ok(())
+    res
 }
