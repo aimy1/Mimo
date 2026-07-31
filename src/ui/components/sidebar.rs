@@ -46,6 +46,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         "📈 ", // Traffic
         "📝 ", // Logs
         "⚙️ ", // Settings
+        "🔒 ", // Privileges
     ];
 
     let items: Vec<ListItem> = Tab::ALL

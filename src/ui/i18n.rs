@@ -32,6 +32,7 @@ pub fn t<'a>(key: &'a str, lang: Language) -> &'a str {
             "tab_traffic" => " 流量监控 ",
             "tab_logs" => " 运行日志 ",
             "tab_settings" => " 系统设置 ",
+            "tab_privileges" => " 权限管理 ",
 
             "header_ver" => " 内核版本 : ",
             "header_mode" => " 运行模式 : ",

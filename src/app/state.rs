@@ -12,10 +12,11 @@ pub enum Tab {
     Traffic = 5,
     Logs = 6,
     Settings = 7,
+    Privileges = 8,
 }
 
 impl Tab {
-    pub const ALL: [Tab; 8] = [
+    pub const ALL: [Tab; 9] = [
         Tab::Dashboard,
         Tab::Proxies,
         Tab::Profiles,
@@ -24,6 +25,7 @@ impl Tab {
         Tab::Traffic,
         Tab::Logs,
         Tab::Settings,
+        Tab::Privileges,
     ];
 
     pub fn title(&self, lang: crate::ui::i18n::Language) -> &'static str {
@@ -36,6 +38,7 @@ impl Tab {
             Tab::Traffic => crate::ui::i18n::t("tab_traffic", lang),
             Tab::Logs => crate::ui::i18n::t("tab_logs", lang),
             Tab::Settings => crate::ui::i18n::t("tab_settings", lang),
+            Tab::Privileges => crate::ui::i18n::t("tab_privileges", lang),
         }
     }
 }

@@ -423,6 +423,17 @@ impl App {
                             KeyCode::Char('c') if self.state.active_tab == Tab::Logs => {
                                 let _ = self.action_tx.try_send(Action::ClearLogs);
                             }
+                            KeyCode::Char('p') | KeyCode::Char('P') if self.state.active_tab == Tab::Privileges => {
+                                self.state.push_toast("Requesting system root privileges for TUN mode...".to_string());
+                                if crate::core::TunMode::grant_privilege().is_ok() {
+                                    self.state.is_tun_privileged = crate::core::TunMode::check_privilege();
+                                    if self.state.is_tun_privileged {
+                                        self.state.push_toast("Privilege granted successfully! cap_net_admin authorized.".to_string());
+                                    }
+                                } else {
+                                    self.state.push_toast("Failed to obtain system root privileges.".to_string());
+                                }
+                            }
                             _ => {}
                         },
                     },
@@ -440,7 +451,7 @@ impl App {
 
                         // 1. Click on Left Sidebar Navigation Bar (Column < 18)
                         if col < 18 {
-                            if row >= 4 && row <= 11 {
+                            if row >= 4 && row <= 12 {
                                 let tab_idx = (row - 4) as usize;
                                 if let Some(tab) = Tab::ALL.get(tab_idx) {
                                     self.state.active_tab = *tab;

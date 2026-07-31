@@ -33,8 +33,8 @@ pub fn render(f: &mut Frame, area: Rect, lang_str: &str) {
                 Span::raw(": 一键跳至列表 顶部(g) 或 底部(G)"),
             ]),
             Line::from(vec![
-                Span::styled("  Tab / 1-8         ", Style::default().fg(Color::Yellow)),
-                Span::raw(": 顺序切换 / 数字直达 8 大页面"),
+                Span::styled("  Tab / 1-9         ", Style::default().fg(Color::Yellow)),
+                Span::raw(": 顺序切换 / 数字直达 9 大页面 (含 9-权限管理)"),
             ]),
             Line::from(vec![
                 Span::styled("  Enter             ", Style::default().fg(Color::Yellow)),

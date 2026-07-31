@@ -1,6 +1,7 @@
 pub mod connections;
 pub mod dashboard;
 pub mod logs;
+pub mod privilege;
 pub mod profiles;
 pub mod proxies;
 pub mod rules;
