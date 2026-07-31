@@ -542,7 +542,7 @@ impl App {
                                     self.state.proxy_sub_focus = ProxySubFocus::Nodes;
                                     if row >= 4 {
                                         let click_idx = (row - 4) as usize;
-                                        let nodes = self.state.current_group_nodes();
+                                        let nodes = self.state.filtered_group_nodes();
                                         if click_idx < nodes.len() {
                                             self.state.selected_node_idx = click_idx;
                                             self.confirm_selection().await;
@@ -961,11 +961,17 @@ impl App {
     async fn confirm_selection(&mut self) {
         match self.state.active_tab {
             Tab::Proxies => {
+                if self.state.proxy_sub_focus == ProxySubFocus::Groups {
+                    self.state.proxy_sub_focus = ProxySubFocus::Nodes;
+                    self.state.selected_node_idx = 0;
+                    return;
+                }
+
                 let group = match self.state.selected_group_name() {
                     Some(g) => g.to_string(),
                     None => return,
                 };
-                let nodes = self.state.current_group_nodes();
+                let nodes = self.state.filtered_group_nodes();
                 let node = match nodes.get(self.state.selected_node_idx) {
                     Some(n) => n.to_string(),
                     None => return,
@@ -977,17 +983,14 @@ impl App {
                 let tx = self.action_tx.clone();
 
                 tokio::spawn(async move {
-                    // 1. Update the selected group directly
+                    // 1. Update selected group directly
                     let _ = client.select_proxy(&group, &target_node).await;
 
-                    // 2. Broadcast selection to ALL selector groups (e.g. Proxies, GLOBAL, Google, YouTube, etc.)
-                    if group.eq_ignore_ascii_case("GLOBAL") || group.eq_ignore_ascii_case("Proxies") {
-                        for g in &groups {
-                            if g != &group {
-                                let _ = client.select_proxy(g, &target_node).await;
-                            }
-                        }
+                    // 2. Broadcast selection to ALL proxy selector groups
+                    for g in &groups {
+                        let _ = client.select_proxy(g, &target_node).await;
                     }
+
                     let _ = tx.send(Action::FetchProxies).await;
                 });
 

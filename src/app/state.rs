@@ -229,4 +229,14 @@ impl AppState {
 
         Vec::new()
     }
+
+    pub fn filtered_group_nodes(&self) -> Vec<String> {
+        let nodes = self.current_group_nodes();
+        if self.search_query.trim().is_empty() {
+            nodes
+        } else {
+            let q = self.search_query.trim().to_lowercase();
+            nodes.into_iter().filter(|n| n.to_lowercase().contains(&q)).collect()
+        }
+    }
 }
