@@ -620,6 +620,21 @@ impl App {
                     if let Some(active) = self.state.profiles.iter().find(|p| p.is_active).or_else(|| self.state.profiles.first()) {
                         if let Ok(content) = std::fs::read_to_string(&active.file_path) {
                             if let Ok(parsed) = crate::profile::ProfileParser::parse_yaml(&content) {
+                                // Auto adapt MihomoClient API URL if external_controller is defined
+                                if let Some(ext_ctrl) = &parsed.external_controller {
+                                    let formatted_url = if ext_ctrl.starts_with("http://") || ext_ctrl.starts_with("https://") {
+                                        ext_ctrl.clone()
+                                    } else {
+                                        format!("http://{}", ext_ctrl)
+                                    };
+                                    if self.state.settings_api_url != formatted_url {
+                                        self.state.settings_api_url = formatted_url.clone();
+                                        if let Ok(new_client) = crate::api::MihomoClient::new(&formatted_url, parsed.secret.clone().or_else(|| if self.state.settings_secret.is_empty() { None } else { Some(self.state.settings_secret.clone()) })) {
+                                            self.client = new_client;
+                                        }
+                                    }
+                                }
+
                                 if self.state.proxy_groups.is_empty() {
                                     let mut groups: Vec<String> = parsed.proxy_groups.iter().map(|g| g.name.clone()).collect();
                                     if !groups.contains(&"GLOBAL".to_string()) {
@@ -628,6 +643,11 @@ impl App {
                                     self.state.proxy_groups = groups;
                                 }
                                 self.state.parsed_active_profile = Some(parsed);
+
+                                // Auto-start Mihomo Core if not running
+                                if !crate::core::CoreProcess::is_running() {
+                                    let _ = crate::core::CoreProcess::start_with_config(&active.file_path);
+                                }
                             }
                         }
                     }
@@ -663,10 +683,13 @@ impl App {
                         let path = dir.join(format!("{}.yaml", target_name));
                         if path.exists() {
                             let path_str = path.to_string_lossy().to_string();
-                            if client.reload_config(&path_str).await.is_ok() {
-                                let _ = crate::profile::ProfileManager::set_active_profile(&target_name);
-                                let _ = tx.send(Action::FetchProfiles).await;
+                            if client.reload_config(&path_str).await.is_err() {
+                                let _ = crate::core::CoreProcess::start_with_config(&path);
                             }
+                            let _ = crate::profile::ProfileManager::set_active_profile(&target_name);
+                            let _ = tx.send(Action::FetchProfiles).await;
+                            let _ = tx.send(Action::FetchProxies).await;
+                            let _ = tx.send(Action::FetchRules).await;
                         }
                     }
                 });

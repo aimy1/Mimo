@@ -9,6 +9,8 @@ pub struct ParsedProfile {
     pub rules: Vec<Rule>,
     pub has_dns: bool,
     pub has_tun: bool,
+    pub external_controller: Option<String>,
+    pub secret: Option<String>,
     pub raw_yaml: String,
 }
 
@@ -20,6 +22,9 @@ struct RawClashConfig {
     pub rules: Option<Vec<String>>,
     pub dns: Option<serde_yaml::Value>,
     pub tun: Option<serde_yaml::Value>,
+    #[serde(rename = "external-controller")]
+    pub external_controller: Option<String>,
+    pub secret: Option<String>,
 }
 
 pub struct ProfileParser;
@@ -51,10 +56,14 @@ impl ProfileParser {
         let mut rules = Vec::new();
         let mut has_dns = false;
         let mut has_tun = false;
+        let mut external_controller = None;
+        let mut secret = None;
 
         if let Some(raw_config) = raw {
             has_dns = raw_config.dns.is_some();
             has_tun = raw_config.tun.is_some();
+            external_controller = raw_config.external_controller;
+            secret = raw_config.secret;
 
             if let Some(raw_proxies) = raw_config.proxies {
                 for val in raw_proxies {
@@ -130,6 +139,8 @@ impl ProfileParser {
             rules,
             has_dns,
             has_tun,
+            external_controller,
+            secret,
             raw_yaml: target_content.to_string(),
         })
     }
@@ -148,6 +159,7 @@ mod tests {
             let parsed = ProfileParser::parse_yaml(&content).unwrap();
             println!("RioLU proxies count: {}", parsed.proxies.len());
             println!("RioLU groups count: {}", parsed.proxy_groups.len());
+            println!("RioLU ext controller: {:?}", parsed.external_controller);
             for p in &parsed.proxies {
                 println!("  Node: {}", p.name);
             }
