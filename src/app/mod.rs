@@ -251,9 +251,15 @@ impl App {
                         KeyCode::Enter => {
                             let name = self.state.profile_name_input.trim().to_string();
                             let url = self.state.profile_url_input.trim().to_string();
-                            if !name.is_empty() && !url.is_empty() {
-                                self.state.show_profile_input = false;
-                                let _ = self.action_tx.try_send(Action::AddProfile { name, url });
+                            if self.state.profile_input_focus == 0 {
+                                if !name.is_empty() {
+                                    self.state.profile_input_focus = 1;
+                                }
+                            } else {
+                                if !name.is_empty() && !url.is_empty() {
+                                    self.state.show_profile_input = false;
+                                    let _ = self.action_tx.try_send(Action::AddProfile { name, url });
+                                }
                             }
                         }
                         KeyCode::Char(c) => {
@@ -617,10 +623,14 @@ impl App {
             Action::AddProfile { name, url } => {
                 self.state.push_toast(format!("Downloading profile '{}'...", name));
                 let tx = self.action_tx.clone();
+                let client = self.client.clone();
                 tokio::spawn(async move {
                     match crate::profile::ProfileManager::download_profile(&name, &url).await {
-                        Ok(_) => {
+                        Ok(file_path) => {
+                            let path_str = file_path.to_string_lossy().to_string();
+                            let _ = client.reload_config(&path_str).await;
                             let _ = tx.send(Action::FetchProfiles).await;
+                            let _ = tx.send(Action::FetchProxies).await;
                         }
                         Err(e) => {
                             let _ = tx.send(Action::ProfilesFetched(Err(format!("Download failed: {}", e)))).await;
@@ -675,6 +685,10 @@ impl App {
 
             Action::FetchProfiles => {
                 self.fetch_profiles();
+            }
+
+            Action::FetchProxies => {
+                self.fetch_proxies();
             }
 
             Action::FetchConnections => {

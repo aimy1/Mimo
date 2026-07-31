@@ -22,6 +22,7 @@ pub enum Action {
     // Core Overview Actions
     FetchVersion,
     FetchConfig,
+    FetchProxies,
     // Connections Actions
     FetchConnections,
     // Rules Actions
