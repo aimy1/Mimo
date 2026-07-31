@@ -68,24 +68,39 @@ impl ProfileManager {
 
     pub async fn download_profile(name: &str, url_or_path: &str) -> Result<PathBuf> {
         let body_content = if url_or_path.starts_with("http://") || url_or_path.starts_with("https://") {
-            let client = Client::builder()
-                .timeout(Duration::from_secs(15))
-                .user_agent("ClashVerge/v1.7.7 Mihomo/v1.18.0 Mimo/0.1.0")
-                .build()?;
+            let uas = ["clash.meta", "ClashMeta", "clash", "Clash/1.18.0"];
+            let mut last_err = String::new();
+            let mut fetched_body = None;
 
-            let resp = client
-                .get(url_or_path)
-                .send()
-                .await
-                .context("Network connection error during subscription download")?;
+            for ua in uas {
+                let client = Client::builder()
+                    .timeout(Duration::from_secs(15))
+                    .user_agent(ua)
+                    .build()?;
 
-            if !resp.status().is_success() {
-                bail!("Subscription server HTTP error status: {}", resp.status());
+                match client.get(url_or_path).send().await {
+                    Ok(resp) => {
+                        if resp.status().is_success() {
+                            if let Ok(text) = resp.text().await {
+                                if !text.contains("406 Not Acceptable") && !text.contains("<title>406") {
+                                    fetched_body = Some(text);
+                                    break;
+                                }
+                            }
+                        } else {
+                            last_err = format!("HTTP {}", resp.status());
+                        }
+                    }
+                    Err(e) => {
+                        last_err = e.to_string();
+                    }
+                }
             }
 
-            resp.text()
-                .await
-                .context("Failed to read subscription response body")?
+            match fetched_body {
+                Some(b) => b,
+                None => bail!("Subscription download failed: {}", last_err),
+            }
         } else {
             let clean_path = url_or_path.trim_start_matches("file://");
             let local_path = Path::new(clean_path);

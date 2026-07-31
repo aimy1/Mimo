@@ -61,7 +61,10 @@ impl ProfileParser {
                     if let Some(name) = val.get("name").and_then(|v| v.as_str()) {
                         let ptype = val.get("type").and_then(|v| v.as_str()).unwrap_or("unknown");
                         let server = val.get("server").and_then(|v| v.as_str()).unwrap_or("");
-                        let port = val.get("port").and_then(|v| v.as_u64()).unwrap_or(0) as u16;
+                        let port = val
+                            .get("port")
+                            .and_then(|v| v.as_u64().or_else(|| v.as_i64().map(|i| i as u64)))
+                            .unwrap_or(0) as u16;
                         let udp = val.get("udp").and_then(|v| v.as_bool());
                         let tls = val.get("tls").and_then(|v| v.as_bool());
 
