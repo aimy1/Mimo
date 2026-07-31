@@ -753,7 +753,14 @@ impl App {
 
             Action::ToggleTunMode => {
                 if !self.state.is_tun_privileged {
-                    self.state.push_toast("TUN failed: require root or cap_net_admin capability".to_string());
+                    self.state.push_toast("Requesting system root privileges for TUN mode...".to_string());
+                    if crate::core::TunMode::grant_privilege().is_ok() {
+                        self.state.is_tun_privileged = crate::core::TunMode::check_privilege();
+                    }
+                }
+
+                if !self.state.is_tun_privileged {
+                    self.state.push_toast("TUN failed: Require system root privileges".to_string());
                 } else {
                     let client = self.client.clone();
                     let new_state = !self.state.is_tun_enabled;
