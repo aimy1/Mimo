@@ -388,55 +388,55 @@ impl App {
                                     }
                                     KeyCode::Char(' ') => {
                                         match self.state.settings_focus {
-                                            0 => self.state.settings_lang = if self.state.settings_lang == "zh" { "en".into() } else { "zh".into() },
-                                            1 => self.state.settings_api_url.push(' '),
-                                            2 => self.state.settings_secret.push(' '),
-                                            5 => self.state.settings_test_url.push(' '),
-                                            6 => self.state.settings_refresh_ms = match self.state.settings_refresh_ms {
-                                                500 => 1000,
-                                                1000 => 2000,
-                                                _ => 500,
-                                            },
-                                            7 => self.state.settings_tun_stack = match self.state.settings_tun_stack.as_str() {
+                                            0 => self.state.settings_api_url.push(' '),
+                                            1 => self.state.settings_secret.push(' '),
+                                            4 => self.state.settings_test_url.push(' '),
+                                            5 => self.state.settings_tun_stack = match self.state.settings_tun_stack.as_str() {
                                                 "system" => "gvisor".into(),
                                                 "gvisor" => "lwip".into(),
                                                 _ => "system".into(),
                                             },
-                                            8 => self.state.settings_log_level = match self.state.settings_log_level.as_str() {
+                                            6 => self.state.settings_log_level = match self.state.settings_log_level.as_str() {
                                                 "info" => "warning".into(),
                                                 "warning" => "error".into(),
                                                 "error" => "debug".into(),
                                                 "debug" => "silent".into(),
                                                 _ => "info".into(),
                                             },
-                                            9 => self.state.settings_allow_lan = !self.state.settings_allow_lan,
-                                            10 => self.state.settings_ipv6 = !self.state.settings_ipv6,
+                                            7 => self.state.settings_allow_lan = !self.state.settings_allow_lan,
+                                            8 => self.state.settings_ipv6 = !self.state.settings_ipv6,
+                                            9 => self.state.settings_lang = if self.state.settings_lang == "zh" { "en".into() } else { "zh".into() },
+                                            10 => self.state.settings_refresh_ms = match self.state.settings_refresh_ms {
+                                                500 => 1000,
+                                                1000 => 2000,
+                                                _ => 500,
+                                            },
                                             11 => { let _ = self.action_tx.try_send(Action::SaveSettings); }
                                             _ => {}
                                         }
                                     }
                                     KeyCode::Backspace => {
                                         match self.state.settings_focus {
-                                            1 => { self.state.settings_api_url.pop(); }
-                                            2 => { self.state.settings_secret.pop(); }
-                                            3 => {
+                                            0 => { self.state.settings_api_url.pop(); }
+                                            1 => { self.state.settings_secret.pop(); }
+                                            2 => {
                                                 let mut s = self.state.settings_http_port.to_string();
                                                 s.pop();
                                                 self.state.settings_http_port = s.parse::<u16>().unwrap_or(0);
                                             }
-                                            4 => {
+                                            3 => {
                                                 let mut s = self.state.settings_socks_port.to_string();
                                                 s.pop();
                                                 self.state.settings_socks_port = s.parse::<u16>().unwrap_or(0);
                                             }
-                                            5 => { self.state.settings_test_url.pop(); }
+                                            4 => { self.state.settings_test_url.pop(); }
                                             _ => {}
                                         }
                                     }
                                     KeyCode::Char(c) => match self.state.settings_focus {
-                                        1 => self.state.settings_api_url.push(c),
-                                        2 => self.state.settings_secret.push(c),
-                                        3 => if c.is_ascii_digit() {
+                                        0 => self.state.settings_api_url.push(c),
+                                        1 => self.state.settings_secret.push(c),
+                                        2 => if c.is_ascii_digit() {
                                             let mut s = self.state.settings_http_port.to_string();
                                             if s == "0" { s.clear(); }
                                             s.push(c);
@@ -444,7 +444,7 @@ impl App {
                                                 self.state.settings_http_port = p;
                                             }
                                         },
-                                        4 => if c.is_ascii_digit() {
+                                        3 => if c.is_ascii_digit() {
                                             let mut s = self.state.settings_socks_port.to_string();
                                             if s == "0" { s.clear(); }
                                             s.push(c);
@@ -452,7 +452,7 @@ impl App {
                                                 self.state.settings_socks_port = p;
                                             }
                                         },
-                                        5 => self.state.settings_test_url.push(c),
+                                        4 => self.state.settings_test_url.push(c),
                                         _ => match c {
                                             'k' => self.state.settings_focus = if self.state.settings_focus == 0 { 11 } else { self.state.settings_focus - 1 },
                                             'j' => self.state.settings_focus = (self.state.settings_focus + 1) % 12,
