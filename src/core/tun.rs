@@ -4,6 +4,15 @@ use std::io::Write;
 use std::path::Path;
 use std::process::{Command, Stdio};
 
+#[derive(Debug, Clone, Default)]
+pub struct TunInterfaceDetails {
+    pub name: String,
+    pub is_up: bool,
+    pub mtu: u32,
+    pub rx_bytes: u64,
+    pub tx_bytes: u64,
+}
+
 pub struct TunMode;
 
 impl TunMode {
@@ -25,6 +34,44 @@ impl TunMode {
         }
 
         false
+    }
+
+    /// Detect active TUN interface status and detailed metrics on Linux
+    pub fn get_interface_details() -> TunInterfaceDetails {
+        let (name, is_up) = Self::get_interface_info();
+        if name == "None" {
+            return TunInterfaceDetails {
+                name,
+                is_up: false,
+                mtu: 0,
+                rx_bytes: 0,
+                tx_bytes: 0,
+            };
+        }
+
+        let sys_path = format!("/sys/class/net/{}", name);
+        let mtu = fs::read_to_string(format!("{}/mtu", sys_path))
+            .ok()
+            .and_then(|s| s.trim().parse::<u32>().ok())
+            .unwrap_or(1500);
+
+        let rx_bytes = fs::read_to_string(format!("{}/statistics/rx_bytes", sys_path))
+            .ok()
+            .and_then(|s| s.trim().parse::<u64>().ok())
+            .unwrap_or(0);
+
+        let tx_bytes = fs::read_to_string(format!("{}/statistics/tx_bytes", sys_path))
+            .ok()
+            .and_then(|s| s.trim().parse::<u64>().ok())
+            .unwrap_or(0);
+
+        TunInterfaceDetails {
+            name,
+            is_up,
+            mtu,
+            rx_bytes,
+            tx_bytes,
+        }
     }
 
     /// Detect active TUN interface status (e.g. tun0, utun, mihomo) on Linux

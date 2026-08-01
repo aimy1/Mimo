@@ -99,26 +99,35 @@ pub async fn handle_tun_action(client: &MihomoClient, action: &str) -> Result<()
             }
             println!("Setting TUN mode to \x1b[32mON\x1b[0m (stack: system, auto-route: true)...");
             client.set_tun_enabled(true).await?;
-            let (iface, is_up) = TunMode::get_interface_info();
-            println!("\x1b[1;32mTUN mode enabled successfully! (Interface: {}, Up: {})\x1b[0m", iface, is_up);
+            let details = TunMode::get_interface_details();
+            println!("\x1b[1;32mTUN mode enabled successfully! (Interface: {}, MTU: {}, Up: {})\x1b[0m", details.name, details.mtu, details.is_up);
         }
         "off" | "disable" | "false" | "0" => {
             println!("Setting TUN mode to \x1b[33mOFF\x1b[0m...");
             client.set_tun_enabled(false).await?;
             println!("\x1b[1;32mTUN mode disabled successfully.\x1b[0m");
         }
+        "system" | "gvisor" | "lwip" => {
+            println!("Switching TUN stack to \x1b[33m{}\x1b[0m...", action);
+            client.set_tun_config(true, action).await?;
+            println!("\x1b[1;32mTUN network stack updated to '{}'.\x1b[0m", action);
+        }
         "status" => {
             let is_priv = TunMode::check_privilege();
-            let (iface, is_up) = TunMode::get_interface_info();
+            let details = TunMode::get_interface_details();
             let config = client.get_config().await.ok();
             let is_enabled = config.as_ref().and_then(|c| c.tun.as_ref()).map(|t| t.enable).unwrap_or(false);
             let stack = config.as_ref().and_then(|c| c.tun.as_ref()).and_then(|t| t.stack.clone()).unwrap_or_else(|| "system".into());
 
-            println!("\x1b[1;36m=== Linux TUN Mode Status ===\x1b[0m");
+            println!("\x1b[1;36m=== Linux TUN Mode Status & Interface Metrics ===\x1b[0m");
             println!("CAP_NET_ADMIN Privileges : {}", if is_priv { "\x1b[32mOK (Authorized)\x1b[0m" } else { "\x1b[31mMissing (Needs setcap)\x1b[0m" });
             println!("Mihomo TUN Configuration : {}", if is_enabled { "\x1b[32mEnabled (ON)\x1b[0m" } else { "\x1b[90mDisabled (OFF)\x1b[0m" });
             println!("TUN Network Stack        : \x1b[33m{}\x1b[0m", stack);
-            println!("Active System Interface  : {} ({})", iface, if is_up { "\x1b[32mUP\x1b[0m" } else { "\x1b[31mDOWN / None\x1b[0m" });
+            println!("Active Interface Name    : \x1b[1;32m{}\x1b[0m ({})", details.name, if details.is_up { "\x1b[32mUP\x1b[0m" } else { "\x1b[31mDOWN / None\x1b[0m" });
+            if details.name != "None" {
+                println!("Interface MTU            : {}", details.mtu);
+                println!("Traffic RX / TX          : {} RX / {} TX", crate::ui::theme::format_bytes(details.rx_bytes), crate::ui::theme::format_bytes(details.tx_bytes));
+            }
         }
         "grant" => {
             println!("Attempting non-interactive privilege escalation for TUN mode...");
@@ -130,7 +139,7 @@ pub async fn handle_tun_action(client: &MihomoClient, action: &str) -> Result<()
             TunMode::revoke_privilege()?;
             println!("\x1b[1;32mPrivilege revoked successfully.\x1b[0m");
         }
-        _ => anyhow::bail!("Unknown TUN action '{}'. Supported actions: on, off, status, grant, revoke", action),
+        _ => anyhow::bail!("Unknown TUN action '{}'. Supported actions: on, off, status, grant, revoke, system, gvisor, lwip", action),
     }
     Ok(())
 }
