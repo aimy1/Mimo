@@ -121,12 +121,15 @@ pub struct AppState {
     pub selected_group_idx: usize,
     pub selected_node_idx: usize,
     pub latency_map: HashMap<String, Option<u16>>,
+    pub sort_nodes_by_latency: bool,
 
     // Connections Selection Index
     pub selected_conn_idx: usize,
+    pub sort_connections_by_traffic: bool,
 
-    // Status Error Message
+    // Status Error & Outbound IP
     pub status_error: Option<String>,
+    pub outbound_ip: Option<String>,
 
     // Realtime Traffic Data
     pub current_traffic: TrafficMessage,
@@ -173,6 +176,7 @@ impl Default for AppState {
             config: None,
             proxies_resp: None,
             status_error: None,
+            outbound_ip: None,
             is_sysproxy_enabled: crate::core::SystemProxy::is_enabled(),
             is_tun_enabled: false,
             is_tun_privileged: crate::core::TunMode::check_privilege(),
@@ -193,8 +197,10 @@ impl Default for AppState {
             selected_group_idx: 0,
             selected_node_idx: 0,
             latency_map: HashMap::new(),
+            sort_nodes_by_latency: false,
             connections_resp: None,
             selected_conn_idx: 0,
+            sort_connections_by_traffic: false,
             current_traffic: TrafficMessage::default(),
             up_history: VecDeque::from(vec![0; 40]),
             down_history: VecDeque::from(vec![0; 40]),

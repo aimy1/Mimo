@@ -17,13 +17,33 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         ])
         .split(area);
 
+    let top_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            if state.is_searching { Constraint::Length(3) } else { Constraint::Length(0) },
+            Constraint::Min(0),
+        ])
+        .split(chunks[0]);
+
+    if state.is_searching {
+        let search_text = format!(" 🔍 Search Connections: {}_", state.search_query);
+        let search_block = Paragraph::new(search_text)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
+                    .border_style(Style::default().fg(Color::Yellow))
+                    .title(" 连接搜索 Search Connections "),
+            );
+        f.render_widget(search_block, top_chunks[0]);
+    }
+
     let header_cells = ["HOST / DST", "PROCESS", "RULE", "CHAINS", "UP / DOWN"]
         .iter()
         .map(|h| ratatui::widgets::Cell::from(*h).style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)));
     let header = Row::new(header_cells).height(1).bottom_margin(1);
 
-    let mut rows = Vec::new();
-
+    let mut conn_list: Vec<&crate::models::ConnectionItem> = Vec::new();
     if let Some(resp) = &state.connections_resp {
         for conn in &resp.connections {
             let host = conn
@@ -33,38 +53,63 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
                 .filter(|h| !h.is_empty())
                 .or(conn.metadata.destination_ip.as_deref())
                 .unwrap_or("Unknown");
+            let process = conn.metadata.process.as_deref().unwrap_or("-");
 
-            let process = conn
-                .metadata
-                .process
-                .as_deref()
-                .unwrap_or("-");
-
-            let rule = conn.rule.as_deref().unwrap_or("Match");
-
-            let chains_str = conn.chains.join(" -> ");
-
-            let bandwidth = format!(
-                "↑ {}  ↓ {}",
-                format_bytes(conn.upload),
-                format_bytes(conn.download)
-            );
-
-            rows.push(Row::new(vec![
-                host.to_string(),
-                process.to_string(),
-                rule.to_string(),
-                chains_str,
-                bandwidth,
-            ]));
+            let query = state.search_query.to_lowercase();
+            if query.is_empty()
+                || host.to_lowercase().contains(&query)
+                || process.to_lowercase().contains(&query)
+                || conn.metadata.destination_ip.as_deref().unwrap_or("").contains(&query)
+            {
+                conn_list.push(conn);
+            }
         }
     }
 
+    if state.sort_connections_by_traffic {
+        conn_list.sort_by_key(|c| std::cmp::Reverse(c.download + c.upload));
+    }
+
+    let mut rows = Vec::new();
+    for conn in &conn_list {
+        let host = conn
+            .metadata
+            .host
+            .as_deref()
+            .filter(|h| !h.is_empty())
+            .or(conn.metadata.destination_ip.as_deref())
+            .unwrap_or("Unknown");
+
+        let process = conn
+            .metadata
+            .process
+            .as_deref()
+            .unwrap_or("-");
+
+        let rule = conn.rule.as_deref().unwrap_or("Match");
+
+        let chains_str = conn.chains.join(" -> ");
+
+        let bandwidth = format!(
+            "↑ {}  ↓ {}",
+            format_bytes(conn.upload),
+            format_bytes(conn.download)
+        );
+
+        rows.push(Row::new(vec![
+            host.to_string(),
+            process.to_string(),
+            rule.to_string(),
+            chains_str,
+            bandwidth,
+        ]));
+    }
+
+    let sort_label = if state.sort_connections_by_traffic { "流量降序" } else { "默认顺序" };
     let title_str = format!(
-        " Connections Total: {} | Total Up: {} | Total Down: {} ['d': Close Selected] ",
-        state.connections_resp.as_ref().map(|c| c.connections.len()).unwrap_or(0),
-        format_bytes(state.connections_resp.as_ref().map(|c| c.upload_total).unwrap_or(0)),
-        format_bytes(state.connections_resp.as_ref().map(|c| c.download_total).unwrap_or(0))
+        " 活动连接 Connections ({}) [{}] ['d':断开选定 | 'D':全切断 | 's':排序 | '/':搜索] ",
+        conn_list.len(),
+        sort_label
     );
 
     let table = Table::new(
@@ -88,13 +133,11 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     .row_highlight_style(Theme::ITEM_SELECTED);
 
     let mut table_state = TableState::default();
-    if let Some(resp) = &state.connections_resp {
-        if !resp.connections.is_empty() {
-            table_state.select(Some(state.selected_conn_idx));
-        }
+    if !conn_list.is_empty() {
+        table_state.select(Some(state.selected_conn_idx.min(conn_list.len() - 1)));
     }
 
-    f.render_stateful_widget(table, chunks[0], &mut table_state);
+    f.render_stateful_widget(table, top_chunks[1], &mut table_state);
 
     // Detail Inspector Box
     let mut detail_lines = Vec::new();

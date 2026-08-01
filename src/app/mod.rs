@@ -71,6 +71,7 @@ impl App {
         self.fetch_profiles();
         self.fetch_rules();
         self.fetch_connections();
+        let _ = self.action_tx.try_send(Action::FetchOutboundIp);
 
         loop {
             tokio::select! {
@@ -494,13 +495,30 @@ impl App {
                                 }
 
                                 // View Action Keybindings
-                                KeyCode::Char('s') | KeyCode::Char('/') => {
+                                KeyCode::Char('/') => {
                                     self.state.is_searching = !self.state.is_searching;
                                     if !self.state.is_searching {
                                         self.state.search_query.clear();
                                     }
                                 }
-                                KeyCode::Char('t') | KeyCode::Char('T') => self.test_selected_group_latency(),
+                                KeyCode::Char('t') | KeyCode::Char('T') if self.state.active_tab == Tab::Proxies => self.test_selected_group_latency(),
+                                KeyCode::Char('o') | KeyCode::Char('O') if self.state.active_tab == Tab::Proxies => {
+                                    self.state.sort_nodes_by_latency = !self.state.sort_nodes_by_latency;
+                                    let status = if self.state.sort_nodes_by_latency { "已开启延迟升序排序" } else { "已恢复默认节点顺序" };
+                                    self.state.push_toast(status.to_string());
+                                }
+                                KeyCode::Char('s') | KeyCode::Char('S') => {
+                                    if self.state.active_tab == Tab::Connections {
+                                        self.state.sort_connections_by_traffic = !self.state.sort_connections_by_traffic;
+                                        let status = if self.state.sort_connections_by_traffic { "已开启连接流量降序排序" } else { "已恢复默认连接顺序" };
+                                        self.state.push_toast(status.to_string());
+                                    } else {
+                                        self.state.is_searching = !self.state.is_searching;
+                                        if !self.state.is_searching {
+                                            self.state.search_query.clear();
+                                        }
+                                    }
+                                }
                                 KeyCode::Enter => {
                                     self.confirm_selection().await;
                                 }
@@ -519,7 +537,9 @@ impl App {
                                     }
                                 }
                                 KeyCode::Char('d') | KeyCode::Char('D') => {
-                                    if self.state.active_tab == Tab::Profiles {
+                                    if self.state.active_tab == Tab::Proxies {
+                                        self.test_single_node_latency();
+                                    } else if self.state.active_tab == Tab::Profiles {
                                         if let Some(p) = self.state.profiles.get(self.state.selected_profile_idx) {
                                             let name = p.name.clone();
                                             let _ = self.action_tx.try_send(Action::DeleteProfile(name));
@@ -1040,6 +1060,28 @@ impl App {
             }
 
             Action::FetchVersion => self.fetch_version(),
+            Action::FetchOutboundIp => {
+                let tx = self.action_tx.clone();
+                tokio::spawn(async move {
+                    let client = reqwest::Client::builder()
+                        .timeout(Duration::from_secs(3))
+                        .build()
+                        .unwrap_or_default();
+                    let res = match client.get("https://api.ipify.org?format=json").send().await {
+                        Ok(resp) => match resp.json::<serde_json::Value>().await {
+                            Ok(v) => Ok(v["ip"].as_str().unwrap_or("Unknown").to_string()),
+                            Err(e) => Err(e.to_string()),
+                        },
+                        Err(e) => Err(e.to_string()),
+                    };
+                    let _ = tx.send(Action::OutboundIpFetched(res)).await;
+                });
+            }
+            Action::OutboundIpFetched(res) => {
+                if let Ok(ip) = res {
+                    self.state.outbound_ip = Some(ip);
+                }
+            }
 
             Action::TrafficReceived(msg) => {
                 self.state.current_traffic = msg.clone();
@@ -1285,6 +1327,19 @@ impl App {
                 });
             }
         });
+    }
+
+    fn test_single_node_latency(&self) {
+        let nodes = self.state.current_group_nodes();
+        if let Some(node) = nodes.get(self.state.selected_node_idx) {
+            let client = self.client.clone();
+            let tx = self.action_tx.clone();
+            let node_name = (*node).clone();
+            tokio::spawn(async move {
+                let delay = client.test_delay(&node_name, None, None).await.map_err(|e| e.to_string());
+                let _ = tx.send(Action::LatencyResult { node: node_name, result: delay }).await;
+            });
+        }
     }
 
     async fn close_selected_connection(&mut self) {

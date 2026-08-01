@@ -19,7 +19,6 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         ])
         .split(area);
 
-    // 1. Core Overview Status Banner Box
     let version_str = state
         .version
         .as_ref()
@@ -57,10 +56,19 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         Span::styled(" (需要 root 或 cap_net_admin 权限)", Style::default().fg(Color::Rgb(243, 139, 168)))
     };
 
+    let ip_str = state
+        .outbound_ip
+        .as_deref()
+        .unwrap_or("检测中 (Checking...)");
+
     let status_text = vec![
         Line::from(vec![
             Span::styled(" Mihomo Core : ", Style::default().fg(Theme::TEXT_MUTED)),
             Span::styled(version_str, Style::default().fg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD)),
+        ]),
+        Line::from(vec![
+            Span::styled(" 出口公网 IP : ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(ip_str, Style::default().fg(Color::Rgb(249, 226, 175)).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
             Span::styled(" 运行模式 Mode: ", Style::default().fg(Theme::TEXT_MUTED)),
@@ -87,7 +95,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded)
                 .border_style(Style::default().fg(Theme::BORDER))
-                .title(" 核心运行状态 Status "),
+                .title(" 核心与网络出口状态 Status & Diagnostics "),
         );
     f.render_widget(status_block, chunks[0]);
 

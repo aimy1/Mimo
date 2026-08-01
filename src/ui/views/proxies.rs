@@ -74,10 +74,29 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .and_then(|g| g.now.as_deref());
 
     // Filter nodes by search query if non-empty
-    let filtered_nodes: Vec<&String> = current_nodes
+    let mut filtered_nodes: Vec<&String> = current_nodes
         .iter()
         .filter(|n| state.search_query.is_empty() || n.to_lowercase().contains(&state.search_query.to_lowercase()))
         .collect();
+
+    // Sort nodes by latency if enabled
+    if state.sort_nodes_by_latency {
+        filtered_nodes.sort_by_key(|n| {
+            let delay = state
+                .latency_map
+                .get(*n)
+                .copied()
+                .flatten()
+                .or_else(|| {
+                    state
+                        .proxies_resp
+                        .as_ref()
+                        .and_then(|r| r.proxies.get(*n))
+                        .and_then(|p| p.last_delay())
+                });
+            delay.unwrap_or(u16::MAX)
+        });
+    }
 
     let right_chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -171,10 +190,12 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         })
         .collect();
 
+    let sort_status = if state.sort_nodes_by_latency { "延迟排序:ON" } else { "默认顺序" };
     let title_str = format!(
-        " 节点 Nodes in '{}' [{} 节点] [Enter:选择 | 'd':测速 | 's':搜索] ",
+        " 节点 Nodes in '{}' [{} 节点|{}] [Enter:选择 | d:测速 | t:全测速 | o:排序 | /:搜索] ",
         group_name,
-        filtered_nodes.len()
+        filtered_nodes.len(),
+        sort_status
     );
 
     let nodes_list = List::new(node_items)

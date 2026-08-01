@@ -16,6 +16,7 @@ pub enum Action {
     ConfigFetched(Result<MihomoConfig, String>),
     ProxiesFetched(Result<ProxiesResponse, String>),
     ConnectionsFetched(Result<ConnectionsResponse, String>),
+    OutboundIpFetched(Result<String, String>),
     TrafficReceived(TrafficMessage),
     LogReceived(LogMessage),
     LatencyResult { node: String, result: Result<u16, String> },
@@ -23,6 +24,7 @@ pub enum Action {
     FetchVersion,
     FetchConfig,
     FetchProxies,
+    FetchOutboundIp,
     // Connections Actions
     FetchConnections,
     // Rules Actions
@@ -58,6 +60,8 @@ pub enum Action {
     // Operations
     ConfirmSelectNode,
     TestSelectedGroupLatency,
+    BatchTestGroupLatency,
+    ToggleNodeSort,
     ChangeMode(String),
     CloseSelectedConnection,
     CloseAllConnections,
