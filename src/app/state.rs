@@ -84,7 +84,11 @@ pub struct AppState {
     pub settings_http_port: u16,
     pub settings_socks_port: u16,
     pub settings_test_url: String,
-    pub settings_focus: usize, // 0: Lang, 1: ApiUrl, 2: Secret, 3: Refresh, 4: Ports, 5: TestUrl, 6: SaveBtn
+    pub settings_tun_stack: String,
+    pub settings_log_level: String,
+    pub settings_allow_lan: bool,
+    pub settings_ipv6: bool,
+    pub settings_focus: usize, // 0..=11 index
 
     // API Data
     pub version: Option<VersionInfo>,
@@ -160,6 +164,10 @@ impl Default for AppState {
             settings_http_port: config.http_port,
             settings_socks_port: config.socks_port,
             settings_test_url: config.test_url.clone(),
+            settings_tun_stack: config.tun_stack.clone(),
+            settings_log_level: config.log_level.clone(),
+            settings_allow_lan: config.allow_lan,
+            settings_ipv6: config.ipv6,
             settings_focus: 0,
             version: None,
             config: None,

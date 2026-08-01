@@ -12,7 +12,19 @@ pub struct Settings {
     pub http_port: u16,
     pub socks_port: u16,
     pub test_url: String,
+    #[serde(default = "default_tun_stack")]
+    pub tun_stack: String,
+    #[serde(default = "default_log_level")]
+    pub log_level: String,
+    #[serde(default = "default_true")]
+    pub allow_lan: bool,
+    #[serde(default = "default_true")]
+    pub ipv6: bool,
 }
+
+fn default_tun_stack() -> String { "system".to_string() }
+fn default_log_level() -> String { "info".to_string() }
+fn default_true() -> bool { true }
 
 impl Default for Settings {
     fn default() -> Self {
@@ -24,6 +36,10 @@ impl Default for Settings {
             http_port: 7890,
             socks_port: 7891,
             test_url: "http://www.gstatic.com/generate_204".to_string(),
+            tun_stack: "system".to_string(),
+            log_level: "info".to_string(),
+            allow_lan: true,
+            ipv6: true,
         }
     }
 }

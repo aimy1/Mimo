@@ -344,14 +344,14 @@ impl App {
                     // Tab / Shift+Tab Navigation
                     KeyCode::Tab => {
                         if self.state.focus_zone == FocusZone::Workspace && self.state.active_tab == Tab::Settings {
-                            self.state.settings_focus = (self.state.settings_focus + 1) % 8;
+                            self.state.settings_focus = (self.state.settings_focus + 1) % 12;
                         } else {
                             self.next_tab();
                         }
                     }
                     KeyCode::BackTab => {
                         if self.state.focus_zone == FocusZone::Workspace && self.state.active_tab == Tab::Settings {
-                            self.state.settings_focus = if self.state.settings_focus == 0 { 7 } else { self.state.settings_focus - 1 };
+                            self.state.settings_focus = if self.state.settings_focus == 0 { 11 } else { self.state.settings_focus - 1 };
                         } else {
                             self.prev_tab();
                         }
@@ -377,54 +377,66 @@ impl App {
                             // Specialized Input Handling for Settings View
                             if self.state.active_tab == Tab::Settings {
                                 match key.code {
-                                    KeyCode::Up => self.move_selection(-1),
-                                    KeyCode::Down => self.move_selection(1),
+                                    KeyCode::Up => self.state.settings_focus = if self.state.settings_focus == 0 { 11 } else { self.state.settings_focus - 1 },
+                                    KeyCode::Down => self.state.settings_focus = (self.state.settings_focus + 1) % 12,
                                     KeyCode::Enter => {
-                                        if self.state.settings_focus == 7 {
+                                        if self.state.settings_focus == 11 {
                                             let _ = self.action_tx.try_send(Action::SaveSettings);
                                         } else {
-                                            self.state.settings_focus = (self.state.settings_focus + 1) % 8;
+                                            self.state.settings_focus = (self.state.settings_focus + 1) % 12;
                                         }
                                     }
                                     KeyCode::Char(' ') => {
-                                        if self.state.settings_focus == 0 {
-                                            self.state.settings_lang = if self.state.settings_lang == "zh" { "en".into() } else { "zh".into() };
-                                        } else if self.state.settings_focus == 3 {
-                                            self.state.settings_refresh_ms = match self.state.settings_refresh_ms {
+                                        match self.state.settings_focus {
+                                            0 => self.state.settings_lang = if self.state.settings_lang == "zh" { "en".into() } else { "zh".into() },
+                                            1 => self.state.settings_api_url.push(' '),
+                                            2 => self.state.settings_secret.push(' '),
+                                            5 => self.state.settings_test_url.push(' '),
+                                            6 => self.state.settings_refresh_ms = match self.state.settings_refresh_ms {
                                                 500 => 1000,
                                                 1000 => 2000,
                                                 _ => 500,
-                                            };
-                                        } else if self.state.settings_focus == 1 {
-                                            self.state.settings_api_url.push(' ');
-                                        } else if self.state.settings_focus == 2 {
-                                            self.state.settings_secret.push(' ');
-                                        } else if self.state.settings_focus == 6 {
-                                            self.state.settings_test_url.push(' ');
+                                            },
+                                            7 => self.state.settings_tun_stack = match self.state.settings_tun_stack.as_str() {
+                                                "system" => "gvisor".into(),
+                                                "gvisor" => "lwip".into(),
+                                                _ => "system".into(),
+                                            },
+                                            8 => self.state.settings_log_level = match self.state.settings_log_level.as_str() {
+                                                "info" => "warning".into(),
+                                                "warning" => "error".into(),
+                                                "error" => "debug".into(),
+                                                "debug" => "silent".into(),
+                                                _ => "info".into(),
+                                            },
+                                            9 => self.state.settings_allow_lan = !self.state.settings_allow_lan,
+                                            10 => self.state.settings_ipv6 = !self.state.settings_ipv6,
+                                            11 => { let _ = self.action_tx.try_send(Action::SaveSettings); }
+                                            _ => {}
                                         }
                                     }
                                     KeyCode::Backspace => {
                                         match self.state.settings_focus {
                                             1 => { self.state.settings_api_url.pop(); }
                                             2 => { self.state.settings_secret.pop(); }
-                                            4 => {
+                                            3 => {
                                                 let mut s = self.state.settings_http_port.to_string();
                                                 s.pop();
                                                 self.state.settings_http_port = s.parse::<u16>().unwrap_or(0);
                                             }
-                                            5 => {
+                                            4 => {
                                                 let mut s = self.state.settings_socks_port.to_string();
                                                 s.pop();
                                                 self.state.settings_socks_port = s.parse::<u16>().unwrap_or(0);
                                             }
-                                            6 => { self.state.settings_test_url.pop(); }
+                                            5 => { self.state.settings_test_url.pop(); }
                                             _ => {}
                                         }
                                     }
                                     KeyCode::Char(c) => match self.state.settings_focus {
                                         1 => self.state.settings_api_url.push(c),
                                         2 => self.state.settings_secret.push(c),
-                                        4 => if c.is_ascii_digit() {
+                                        3 => if c.is_ascii_digit() {
                                             let mut s = self.state.settings_http_port.to_string();
                                             if s == "0" { s.clear(); }
                                             s.push(c);
@@ -432,7 +444,7 @@ impl App {
                                                 self.state.settings_http_port = p;
                                             }
                                         },
-                                        5 => if c.is_ascii_digit() {
+                                        4 => if c.is_ascii_digit() {
                                             let mut s = self.state.settings_socks_port.to_string();
                                             if s == "0" { s.clear(); }
                                             s.push(c);
@@ -440,10 +452,10 @@ impl App {
                                                 self.state.settings_socks_port = p;
                                             }
                                         },
-                                        6 => self.state.settings_test_url.push(c),
+                                        5 => self.state.settings_test_url.push(c),
                                         _ => match c {
-                                            'k' => self.move_selection(-1),
-                                            'j' => self.move_selection(1),
+                                            'k' => self.state.settings_focus = if self.state.settings_focus == 0 { 11 } else { self.state.settings_focus - 1 },
+                                            'j' => self.state.settings_focus = (self.state.settings_focus + 1) % 12,
                                             _ => {}
                                         },
                                     },
@@ -997,8 +1009,18 @@ impl App {
                 cfg.http_port = self.state.settings_http_port;
                 cfg.socks_port = self.state.settings_socks_port;
                 cfg.test_url = self.state.settings_test_url.clone();
+                cfg.tun_stack = self.state.settings_tun_stack.clone();
+                cfg.log_level = self.state.settings_log_level.clone();
+                cfg.allow_lan = self.state.settings_allow_lan;
+                cfg.ipv6 = self.state.settings_ipv6;
 
                 if cfg.save().is_ok() {
+                    let client = self.client.clone();
+                    let stack = self.state.settings_tun_stack.clone();
+                    let is_tun = self.state.is_tun_enabled;
+                    tokio::spawn(async move {
+                        let _ = client.set_tun_config(is_tun, &stack).await;
+                    });
                     let msg = if cfg.language == "zh" { "配置已成功保存至 ~/.config/mimo/config.toml" } else { "Settings saved to ~/.config/mimo/config.toml" };
                     self.state.push_toast(msg.to_string());
                 } else {
