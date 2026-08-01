@@ -61,10 +61,11 @@ enum Commands {
         socks_port: u16,
     },
 
-    /// Toggle TUN Mode
+    /// Manage TUN Mode and privileges (on, off, status, grant, revoke)
     Tun {
-        /// State: on or off
-        state: String,
+        /// Action or state: on, off, status, grant, revoke
+        #[arg(default_value = "status")]
+        action: String,
     },
 
     /// Manage profiles and subscription URLs
@@ -84,6 +85,9 @@ enum Commands {
         /// Optional specific node name to test
         node: Option<String>,
     },
+
+    /// List active Mihomo rules
+    Rules,
 }
 
 #[derive(Subcommand)]
@@ -100,6 +104,11 @@ enum ProfileSubCommands {
     /// Switch active profile
     Use {
         /// Profile name to activate
+        name: String,
+    },
+    /// Delete a local profile
+    Del {
+        /// Profile name to delete
         name: String,
     },
 }
@@ -147,9 +156,8 @@ async fn main() -> anyhow::Result<()> {
                 let enable = state.eq_ignore_ascii_case("on") || state.eq_ignore_ascii_case("true") || state == "1";
                 commands::handle_sysproxy_toggle(enable, http_port, socks_port).await?;
             }
-            Commands::Tun { state } => {
-                let enable = state.eq_ignore_ascii_case("on") || state.eq_ignore_ascii_case("true") || state == "1";
-                commands::handle_tun_toggle(&client, enable).await?;
+            Commands::Tun { action } => {
+                commands::handle_tun_action(&client, &action).await?;
             }
             Commands::Profile { action } => match action {
                 ProfileSubCommands::List => {
@@ -160,6 +168,9 @@ async fn main() -> anyhow::Result<()> {
                 }
                 ProfileSubCommands::Use { name } => {
                     commands::handle_profile_use(&client, &name).await?;
+                }
+                ProfileSubCommands::Del { name } => {
+                    commands::handle_profile_del(&name).await?;
                 }
             },
             Commands::Proxy { action } => match action {
@@ -172,6 +183,9 @@ async fn main() -> anyhow::Result<()> {
             },
             Commands::Latency { node } => {
                 commands::handle_latency(&client, node.as_deref()).await?;
+            }
+            Commands::Rules => {
+                commands::handle_rules_list(&client).await?;
             }
         }
         return Ok(());

@@ -88,7 +88,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         })
         .collect();
 
-    let title_str = format!(" 机场订阅列表 ({}) [Enter:激活 | 'U':更新 | 'D':删除 | 'a':添加] ", state.profiles.len());
+    let title_str = format!(" 机场订阅列表 ({}) [Enter:激活 | 'u':更新 | 'd':删除 | 'a':添加] ", state.profiles.len());
     let list = List::new(items)
         .block(
             Block::default()

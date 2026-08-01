@@ -151,6 +151,40 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_parse_standard_yaml() {
+        let yaml_str = r#"
+port: 7890
+socks-port: 7891
+external-controller: 127.0.0.1:9090
+secret: "my_secret"
+proxies:
+  - { name: "HK 01", type: ss, server: 1.1.1.1, port: 443 }
+  - { name: "US 01", type: vmess, server: 2.2.2.2, port: 8443 }
+proxy-groups:
+  - { name: GLOBAL, type: select, proxies: ["HK 01", "US 01"] }
+rules:
+  - DOMAIN-SUFFIX,google.com,GLOBAL
+  - MATCH,DIRECT
+"#;
+        let parsed = ProfileParser::parse_yaml(yaml_str).unwrap();
+        assert_eq!(parsed.proxies.len(), 2);
+        assert_eq!(parsed.proxy_groups.len(), 1);
+        assert_eq!(parsed.rules.len(), 2);
+        assert_eq!(parsed.external_controller.as_deref(), Some("127.0.0.1:9090"));
+        assert_eq!(parsed.secret.as_deref(), Some("my_secret"));
+    }
+
+    #[test]
+    fn test_parse_base64_yaml() {
+        use base64::Engine;
+        let raw_yaml = "proxies:\n  - { name: \"Node1\", type: ss, server: 1.2.3.4, port: 80 }\nrules:\n  - MATCH,DIRECT\n";
+        let encoded = base64::engine::general_purpose::STANDARD.encode(raw_yaml);
+        let parsed = ProfileParser::parse_yaml(&encoded).unwrap();
+        assert_eq!(parsed.proxies.len(), 1);
+        assert_eq!(parsed.proxies[0].name, "Node1");
+    }
+
+    #[test]
     fn test_parse_riolu() {
         let home = dirs::home_dir().unwrap();
         let path = home.join(".config/mimo/profiles/RioLU.yaml");

@@ -88,6 +88,13 @@ pub struct ProxiesResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TunConfigInfo {
+    #[serde(default)]
+    pub enable: bool,
+    pub stack: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MihomoConfig {
     pub mode: Option<String>,
     #[serde(rename = "port")]
@@ -100,6 +107,7 @@ pub struct MihomoConfig {
     pub log_level: Option<String>,
     #[serde(rename = "allow-lan")]
     pub allow_lan: Option<bool>,
+    pub tun: Option<TunConfigInfo>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

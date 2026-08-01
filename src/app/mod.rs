@@ -198,6 +198,12 @@ impl App {
                 self.state.memory_used_bytes = sys.used_memory();
                 self.state.memory_total_bytes = sys.total_memory();
 
+                // Refresh TUN Privilege & Interface status
+                self.state.is_tun_privileged = crate::core::TunMode::check_privilege();
+                let (iface, is_up) = crate::core::TunMode::get_interface_info();
+                self.state.tun_interface_name = iface;
+                self.state.is_tun_interface_up = is_up;
+
                 // Periodic polling for proxies and connections
                 self.fetch_proxies();
                 if self.state.active_tab == Tab::Connections {
@@ -338,24 +344,24 @@ impl App {
                     // Tab / Shift+Tab Navigation
                     KeyCode::Tab => {
                         if self.state.focus_zone == FocusZone::Workspace && self.state.active_tab == Tab::Settings {
-                            self.state.settings_focus = (self.state.settings_focus + 1) % 7;
+                            self.state.settings_focus = (self.state.settings_focus + 1) % 8;
                         } else {
                             self.next_tab();
                         }
                     }
                     KeyCode::BackTab => {
                         if self.state.focus_zone == FocusZone::Workspace && self.state.active_tab == Tab::Settings {
-                            self.state.settings_focus = if self.state.settings_focus == 0 { 6 } else { self.state.settings_focus - 1 };
+                            self.state.settings_focus = if self.state.settings_focus == 0 { 7 } else { self.state.settings_focus - 1 };
                         } else {
                             self.prev_tab();
                         }
                     }
 
                     // Global Core Control Hotkeys
-                    KeyCode::Char('m') => self.cycle_mode(),
-                    KeyCode::Char('p') => { let _ = self.action_tx.try_send(Action::ToggleSystemProxy); }
-                    KeyCode::Char('x') => { let _ = self.action_tx.try_send(Action::ToggleTunMode); }
-                    KeyCode::Char('r') => { let _ = self.action_tx.try_send(Action::RestartCore); }
+                    KeyCode::Char('m') | KeyCode::Char('M') => self.cycle_mode(),
+                    KeyCode::Char('p') | KeyCode::Char('P') if self.state.active_tab != Tab::Privileges => { let _ = self.action_tx.try_send(Action::ToggleSystemProxy); }
+                    KeyCode::Char('x') | KeyCode::Char('X') => { let _ = self.action_tx.try_send(Action::ToggleTunMode); }
+                    KeyCode::Char('r') | KeyCode::Char('R') if self.state.active_tab != Tab::Privileges => { let _ = self.action_tx.try_send(Action::RestartCore); }
 
                     // Layer 4: Focus Zone & View Specific Keybindings
                     _ => match self.state.focus_zone {
@@ -367,100 +373,165 @@ impl App {
                             }
                             _ => {}
                         },
-                        FocusZone::Workspace => match key.code {
-                            // Movement in Active View List / Table
-                            KeyCode::Up | KeyCode::Char('k') => self.move_selection(-1),
-                            KeyCode::Down | KeyCode::Char('j') => self.move_selection(1),
+                        FocusZone::Workspace => {
+                            // Specialized Input Handling for Settings View
+                            if self.state.active_tab == Tab::Settings {
+                                match key.code {
+                                    KeyCode::Up => self.move_selection(-1),
+                                    KeyCode::Down => self.move_selection(1),
+                                    KeyCode::Enter => {
+                                        if self.state.settings_focus == 7 {
+                                            let _ = self.action_tx.try_send(Action::SaveSettings);
+                                        } else {
+                                            self.state.settings_focus = (self.state.settings_focus + 1) % 8;
+                                        }
+                                    }
+                                    KeyCode::Char(' ') => {
+                                        if self.state.settings_focus == 0 {
+                                            self.state.settings_lang = if self.state.settings_lang == "zh" { "en".into() } else { "zh".into() };
+                                        } else if self.state.settings_focus == 3 {
+                                            self.state.settings_refresh_ms = match self.state.settings_refresh_ms {
+                                                500 => 1000,
+                                                1000 => 2000,
+                                                _ => 500,
+                                            };
+                                        } else if self.state.settings_focus == 1 {
+                                            self.state.settings_api_url.push(' ');
+                                        } else if self.state.settings_focus == 2 {
+                                            self.state.settings_secret.push(' ');
+                                        } else if self.state.settings_focus == 6 {
+                                            self.state.settings_test_url.push(' ');
+                                        }
+                                    }
+                                    KeyCode::Backspace => {
+                                        match self.state.settings_focus {
+                                            1 => { self.state.settings_api_url.pop(); }
+                                            2 => { self.state.settings_secret.pop(); }
+                                            4 => {
+                                                let mut s = self.state.settings_http_port.to_string();
+                                                s.pop();
+                                                self.state.settings_http_port = s.parse::<u16>().unwrap_or(0);
+                                            }
+                                            5 => {
+                                                let mut s = self.state.settings_socks_port.to_string();
+                                                s.pop();
+                                                self.state.settings_socks_port = s.parse::<u16>().unwrap_or(0);
+                                            }
+                                            6 => { self.state.settings_test_url.pop(); }
+                                            _ => {}
+                                        }
+                                    }
+                                    KeyCode::Char(c) => match self.state.settings_focus {
+                                        1 => self.state.settings_api_url.push(c),
+                                        2 => self.state.settings_secret.push(c),
+                                        4 => if c.is_ascii_digit() {
+                                            let mut s = self.state.settings_http_port.to_string();
+                                            if s == "0" { s.clear(); }
+                                            s.push(c);
+                                            if let Ok(p) = s.parse::<u16>() {
+                                                self.state.settings_http_port = p;
+                                            }
+                                        },
+                                        5 => if c.is_ascii_digit() {
+                                            let mut s = self.state.settings_socks_port.to_string();
+                                            if s == "0" { s.clear(); }
+                                            s.push(c);
+                                            if let Ok(p) = s.parse::<u16>() {
+                                                self.state.settings_socks_port = p;
+                                            }
+                                        },
+                                        6 => self.state.settings_test_url.push(c),
+                                        _ => match c {
+                                            'k' => self.move_selection(-1),
+                                            'j' => self.move_selection(1),
+                                            _ => {}
+                                        },
+                                    },
+                                    _ => {}
+                                }
+                                return Ok(false);
+                            }
 
-                            // Top & Bottom Jumps
-                            KeyCode::Char('g') | KeyCode::Home => self.jump_top(),
-                            KeyCode::Char('G') | KeyCode::End => self.jump_bottom(),
+                            match key.code {
+                                // Movement in Active View List / Table
+                                KeyCode::Up | KeyCode::Char('k') => self.move_selection(-1),
+                                KeyCode::Down | KeyCode::Char('j') => self.move_selection(1),
 
-                            // Horizontal Pane Movement
-                            KeyCode::Left | KeyCode::Char('h') => {
-                                if self.state.active_tab == Tab::Proxies {
-                                    if self.state.proxy_sub_focus == ProxySubFocus::Nodes {
-                                        self.state.proxy_sub_focus = ProxySubFocus::Groups;
+                                // Top & Bottom Jumps
+                                KeyCode::Char('g') | KeyCode::Home => self.jump_top(),
+                                KeyCode::Char('G') | KeyCode::End => self.jump_bottom(),
+
+                                // Horizontal Pane Movement
+                                KeyCode::Left | KeyCode::Char('h') => {
+                                    if self.state.active_tab == Tab::Proxies {
+                                        if self.state.proxy_sub_focus == ProxySubFocus::Nodes {
+                                            self.state.proxy_sub_focus = ProxySubFocus::Groups;
+                                        } else {
+                                            self.state.focus_zone = FocusZone::Sidebar;
+                                        }
                                     } else {
                                         self.state.focus_zone = FocusZone::Sidebar;
                                     }
-                                } else {
-                                    self.state.focus_zone = FocusZone::Sidebar;
                                 }
-                            }
-                            KeyCode::Right | KeyCode::Char('l') => {
-                                if self.state.active_tab == Tab::Proxies {
-                                    if self.state.proxy_sub_focus == ProxySubFocus::Groups {
-                                        self.state.proxy_sub_focus = ProxySubFocus::Nodes;
+                                KeyCode::Right | KeyCode::Char('l') => {
+                                    if self.state.active_tab == Tab::Proxies {
+                                        if self.state.proxy_sub_focus == ProxySubFocus::Groups {
+                                            self.state.proxy_sub_focus = ProxySubFocus::Nodes;
+                                        }
                                     }
                                 }
-                            }
 
-                            // View Action Keybindings
-                            KeyCode::Char('s') | KeyCode::Char('/') => {
-                                self.state.is_searching = !self.state.is_searching;
-                                if !self.state.is_searching {
-                                    self.state.search_query.clear();
-                                }
-                            }
-                            KeyCode::Char('t') => self.test_selected_group_latency(),
-                            KeyCode::Enter => {
-                                if self.state.active_tab == Tab::Settings {
-                                    if self.state.settings_focus == 6 {
-                                        let _ = self.action_tx.try_send(Action::SaveSettings);
-                                    } else {
-                                        self.state.settings_focus = (self.state.settings_focus + 1) % 7;
+                                // View Action Keybindings
+                                KeyCode::Char('s') | KeyCode::Char('/') => {
+                                    self.state.is_searching = !self.state.is_searching;
+                                    if !self.state.is_searching {
+                                        self.state.search_query.clear();
                                     }
-                                } else {
+                                }
+                                KeyCode::Char('t') | KeyCode::Char('T') => self.test_selected_group_latency(),
+                                KeyCode::Enter => {
                                     self.confirm_selection().await;
                                 }
-                            }
-                            KeyCode::Char(' ') if self.state.active_tab == Tab::Settings => {
-                                if self.state.settings_focus == 0 {
-                                    self.state.settings_lang = if self.state.settings_lang == "zh" { "en".into() } else { "zh".into() };
-                                } else if self.state.settings_focus == 3 {
-                                    self.state.settings_refresh_ms = match self.state.settings_refresh_ms {
-                                        500 => 1000,
-                                        1000 => 2000,
-                                        _ => 500,
-                                    };
+                                KeyCode::Char('a') | KeyCode::Char('A') if self.state.active_tab == Tab::Profiles => {
+                                    self.state.profile_name_input.clear();
+                                    self.state.profile_url_input.clear();
+                                    self.state.profile_input_focus = 0;
+                                    self.state.show_profile_input = true;
                                 }
-                            }
-                            KeyCode::Char('a') if self.state.active_tab == Tab::Profiles => {
-                                self.state.profile_name_input.clear();
-                                self.state.profile_url_input.clear();
-                                self.state.profile_input_focus = 0;
-                                self.state.show_profile_input = true;
-                            }
-                            KeyCode::Char('u') if self.state.active_tab == Tab::Profiles => {
-                                if let Some(p) = self.state.profiles.get(self.state.selected_profile_idx) {
-                                    if let Some(url) = p.url.clone() {
-                                        let name = p.name.clone();
-                                        let _ = self.action_tx.try_send(Action::AddProfile { name, url });
-                                    }
-                                }
-                            }
-                            KeyCode::Char('d') => {
-                                if self.state.active_tab == Tab::Profiles {
+                                KeyCode::Char('u') | KeyCode::Char('U') if self.state.active_tab == Tab::Profiles => {
                                     if let Some(p) = self.state.profiles.get(self.state.selected_profile_idx) {
-                                        let name = p.name.clone();
-                                        let _ = self.action_tx.try_send(Action::DeleteProfile(name));
+                                        if let Some(url) = p.url.clone() {
+                                            let name = p.name.clone();
+                                            let _ = self.action_tx.try_send(Action::AddProfile { name, url });
+                                        }
                                     }
-                                } else if self.state.active_tab == Tab::Connections {
-                                    self.close_selected_connection().await;
                                 }
+                                KeyCode::Char('d') | KeyCode::Char('D') => {
+                                    if self.state.active_tab == Tab::Profiles {
+                                        if let Some(p) = self.state.profiles.get(self.state.selected_profile_idx) {
+                                            let name = p.name.clone();
+                                            let _ = self.action_tx.try_send(Action::DeleteProfile(name));
+                                        }
+                                    } else if self.state.active_tab == Tab::Connections {
+                                        if key.code == KeyCode::Char('D') {
+                                            let _ = self.action_tx.try_send(Action::CloseAllConnections);
+                                        } else {
+                                            self.close_selected_connection().await;
+                                        }
+                                    }
+                                }
+                                KeyCode::Char('c') | KeyCode::Char('C') if self.state.active_tab == Tab::Logs => {
+                                    let _ = self.action_tx.try_send(Action::ClearLogs);
+                                }
+                                KeyCode::Char('p') | KeyCode::Char('P') if self.state.active_tab == Tab::Privileges => {
+                                    let _ = self.action_tx.try_send(Action::ShowTunModal);
+                                }
+                                KeyCode::Char('r') | KeyCode::Char('R') if self.state.active_tab == Tab::Privileges => {
+                                    let _ = self.action_tx.try_send(Action::RevokeTunPrivilege);
+                                }
+                                _ => {}
                             }
-                            KeyCode::Char('D') if self.state.active_tab == Tab::Connections => {
-                                let _ = self.action_tx.try_send(Action::CloseAllConnections);
-                            }
-                            KeyCode::Char('c') if self.state.active_tab == Tab::Logs => {
-                                let _ = self.action_tx.try_send(Action::ClearLogs);
-                            }
-                            KeyCode::Char('p') | KeyCode::Char('P') if self.state.active_tab == Tab::Privileges => {
-                                let _ = self.action_tx.try_send(Action::ShowTunModal);
-                            }
-                            _ => {}
-                        },
+                        }
                     },
                 }
             }
@@ -530,8 +601,10 @@ impl App {
                                     self.state.settings_focus = 4;
                                 } else if row >= 18 && row <= 20 {
                                     self.state.settings_focus = 5;
-                                } else if row >= 21 {
+                                } else if row >= 21 && row <= 23 {
                                     self.state.settings_focus = 6;
+                                } else if row >= 24 {
+                                    self.state.settings_focus = 7;
                                     let _ = self.action_tx.try_send(Action::SaveSettings);
                                 }
                             } else if self.state.active_tab == Tab::Profiles {
@@ -629,7 +702,12 @@ impl App {
             },
 
             Action::ConfigFetched(res) => match res {
-                Ok(cfg) => self.state.config = Some(cfg),
+                Ok(cfg) => {
+                    if let Some(tun) = &cfg.tun {
+                        self.state.is_tun_enabled = tun.enable;
+                    }
+                    self.state.config = Some(cfg);
+                }
                 Err(e) => self.state.status_error = Some(e),
             },
 
@@ -865,6 +943,27 @@ impl App {
                 }
             }
 
+            Action::RevokeTunPrivilege => {
+                self.state.push_toast("🚫 正在撤销 CAP_NET_ADMIN 系统权限...".to_string());
+                let tx = self.action_tx.clone();
+                tokio::task::spawn_blocking(move || {
+                    let res = crate::core::TunMode::revoke_privilege().map_err(|e| e.to_string());
+                    let _ = tx.blocking_send(Action::RevokeTunPrivilegeResult(res));
+                });
+            }
+
+            Action::RevokeTunPrivilegeResult(res) => {
+                match res {
+                    Ok(_) => {
+                        self.state.is_tun_privileged = crate::core::TunMode::check_privilege();
+                        self.state.push_toast("已成功撤销 CAP_NET_ADMIN 系统权限".to_string());
+                    }
+                    Err(err) => {
+                        self.state.push_toast(format!("❌ 撤销权限失败: {}", err));
+                    }
+                }
+            }
+
             Action::ToggleTunMode => {
                 if !self.state.is_tun_privileged {
                     let _ = self.action_tx.try_send(Action::ShowTunModal);
@@ -1012,7 +1111,7 @@ impl App {
                 self.state.log_scroll = (current + delta).max(0) as usize;
             }
             Tab::Settings => {
-                self.state.settings_focus = (self.state.settings_focus as i32 + delta).rem_euclid(7) as usize;
+                self.state.settings_focus = (self.state.settings_focus as i32 + delta).rem_euclid(8) as usize;
             }
             _ => {}
         }
@@ -1065,7 +1164,7 @@ impl App {
                 let len = self.state.logs.len();
                 if len > 0 { self.state.log_scroll = len - 1; }
             }
-            Tab::Settings => self.state.settings_focus = 6,
+            Tab::Settings => self.state.settings_focus = 7,
             _ => {}
         }
     }

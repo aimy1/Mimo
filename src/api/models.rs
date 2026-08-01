@@ -11,6 +11,13 @@ pub struct VersionInfo {
     pub premium: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TunConfigInfo {
+    #[serde(default)]
+    pub enable: bool,
+    pub stack: Option<String>,
+}
+
 /// Mihomo configuration response (/configs)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MihomoConfig {
@@ -24,6 +31,7 @@ pub struct MihomoConfig {
     #[serde(rename = "log-level")]
     pub log_level: Option<String>,
     pub allow_lan: Option<bool>,
+    pub tun: Option<TunConfigInfo>,
 }
 
 /// Payload for updating config (PATCH /configs)

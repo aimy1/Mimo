@@ -54,7 +54,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .or_else(|| state.parsed_active_profile.as_ref().map(|p| p.rules.len()))
         .unwrap_or(0);
 
-    let title_str = format!(" 规则列表 Rules List Total: {} ", rules_count);
+    let title_str = format!(" 规则列表 Rules List Total: {} [j/k: 移动滚动] ", rules_count);
 
     let table = Table::new(
         rows,
@@ -73,7 +73,12 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
             .border_style(Style::default().fg(Theme::BORDER))
             .title(title_str),
     )
-    .row_highlight_style(Style::default().bg(Color::Rgb(49, 50, 68)));
+    .row_highlight_style(Theme::ITEM_SELECTED);
 
-    f.render_widget(table, area);
+    let mut table_state = ratatui::widgets::TableState::default();
+    if rules_count > 0 {
+        table_state.select(Some(state.selected_rule_idx));
+    }
+
+    f.render_stateful_widget(table, area, &mut table_state);
 }

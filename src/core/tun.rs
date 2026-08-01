@@ -1,5 +1,7 @@
 use anyhow::{bail, Result};
+use std::fs;
 use std::io::Write;
+use std::path::Path;
 use std::process::{Command, Stdio};
 
 pub struct TunMode;
@@ -23,6 +25,37 @@ impl TunMode {
         }
 
         false
+    }
+
+    /// Detect active TUN interface status (e.g. tun0, utun, mihomo) on Linux
+    pub fn get_interface_info() -> (String, bool) {
+        let candidate_ifaces = ["tun0", "mihomo", "utun", "clash"];
+        
+        for iface in candidate_ifaces {
+            let sys_path = format!("/sys/class/net/{}", iface);
+            if Path::new(&sys_path).exists() {
+                let operstate_path = format!("{}/operstate", sys_path);
+                let is_up = if let Ok(state) = fs::read_to_string(&operstate_path) {
+                    let s = state.trim().to_lowercase();
+                    s == "up" || s == "unknown"
+                } else {
+                    true
+                };
+                return (iface.to_string(), is_up);
+            }
+        }
+
+        // Search any interface starting with tun
+        if let Ok(entries) = fs::read_dir("/sys/class/net/") {
+            for entry in entries.flatten() {
+                let name = entry.file_name().to_string_lossy().to_string();
+                if name.starts_with("tun") {
+                    return (name, true);
+                }
+            }
+        }
+
+        ("None".to_string(), false)
     }
 
     /// Grant TUN capability via password passed to sudo -S
@@ -83,6 +116,38 @@ impl TunMode {
         }
 
         bail!("Failed to obtain privileges via Linux Polkit GUI")
+    }
+
+    /// Revoke TUN capability from Mihomo binary (`setcap -r`)
+    pub fn revoke_privilege() -> Result<()> {
+        let binary = match crate::core::CoreProcess::find_mihomo_binary() {
+            Some(b) => b,
+            None => bail!("Mihomo binary not found to revoke privileges"),
+        };
+
+        let binary_str = binary.to_string_lossy().to_string();
+
+        if let Ok(status) = Command::new("pkexec")
+            .args(["setcap", "-r", &binary_str])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+        {
+            if status.success() {
+                return Ok(());
+            }
+        }
+
+        let output = Command::new("sudo")
+            .args(["-n", "setcap", "-r", &binary_str])
+            .output()?;
+
+        if output.status.success() {
+            Ok(())
+        } else {
+            bail!("Failed to revoke privileges")
+        }
     }
 
     /// Try non-interactive privilege escalation (e.g. Polkit GUI or passwordless sudo)

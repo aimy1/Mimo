@@ -87,10 +87,51 @@ pub async fn handle_sysproxy_toggle(enable: bool, http_port: u16, socks_port: u1
     Ok(())
 }
 
-pub async fn handle_tun_toggle(client: &MihomoClient, enable: bool) -> Result<()> {
-    println!("Setting TUN mode to {}...", enable);
-    client.set_tun_enabled(enable).await?;
-    println!("\x1b[32mTUN mode updated successfully.\x1b[0m");
+pub async fn handle_tun_action(client: &MihomoClient, action: &str) -> Result<()> {
+    match action.to_lowercase().as_str() {
+        "on" | "enable" | "true" | "1" => {
+            if !TunMode::check_privilege() {
+                println!("\x1b[33mWarning: Mihomo binary lacks CAP_NET_ADMIN privilege. Attempting privilege escalation...\x1b[0m");
+                if let Err(e) = TunMode::grant_privilege() {
+                    println!("\x1b[31mFailed to grant privileges: {}\x1b[0m", e);
+                    println!("Please run 'mimo tun grant' or authorize via TUI.");
+                }
+            }
+            println!("Setting TUN mode to \x1b[32mON\x1b[0m (stack: system, auto-route: true)...");
+            client.set_tun_enabled(true).await?;
+            let (iface, is_up) = TunMode::get_interface_info();
+            println!("\x1b[1;32mTUN mode enabled successfully! (Interface: {}, Up: {})\x1b[0m", iface, is_up);
+        }
+        "off" | "disable" | "false" | "0" => {
+            println!("Setting TUN mode to \x1b[33mOFF\x1b[0m...");
+            client.set_tun_enabled(false).await?;
+            println!("\x1b[1;32mTUN mode disabled successfully.\x1b[0m");
+        }
+        "status" => {
+            let is_priv = TunMode::check_privilege();
+            let (iface, is_up) = TunMode::get_interface_info();
+            let config = client.get_config().await.ok();
+            let is_enabled = config.as_ref().and_then(|c| c.tun.as_ref()).map(|t| t.enable).unwrap_or(false);
+            let stack = config.as_ref().and_then(|c| c.tun.as_ref()).and_then(|t| t.stack.clone()).unwrap_or_else(|| "system".into());
+
+            println!("\x1b[1;36m=== Linux TUN Mode Status ===\x1b[0m");
+            println!("CAP_NET_ADMIN Privileges : {}", if is_priv { "\x1b[32mOK (Authorized)\x1b[0m" } else { "\x1b[31mMissing (Needs setcap)\x1b[0m" });
+            println!("Mihomo TUN Configuration : {}", if is_enabled { "\x1b[32mEnabled (ON)\x1b[0m" } else { "\x1b[90mDisabled (OFF)\x1b[0m" });
+            println!("TUN Network Stack        : \x1b[33m{}\x1b[0m", stack);
+            println!("Active System Interface  : {} ({})", iface, if is_up { "\x1b[32mUP\x1b[0m" } else { "\x1b[31mDOWN / None\x1b[0m" });
+        }
+        "grant" => {
+            println!("Attempting non-interactive privilege escalation for TUN mode...");
+            TunMode::grant_privilege()?;
+            println!("\x1b[1;32mCAP_NET_ADMIN privilege granted successfully!\x1b[0m");
+        }
+        "revoke" => {
+            println!("Revoking CAP_NET_ADMIN privilege from Mihomo binary...");
+            TunMode::revoke_privilege()?;
+            println!("\x1b[1;32mPrivilege revoked successfully.\x1b[0m");
+        }
+        _ => anyhow::bail!("Unknown TUN action '{}'. Supported actions: on, off, status, grant, revoke", action),
+    }
     Ok(())
 }
 
@@ -126,6 +167,28 @@ pub async fn handle_profile_use(client: &MihomoClient, name: &str) -> Result<()>
     client.reload_config(&file_path.to_string_lossy()).await?;
     ProfileManager::set_active_profile(name)?;
     println!("\x1b[1;32mSuccessfully activated profile '{}'!\x1b[0m", name);
+    Ok(())
+}
+
+pub async fn handle_profile_del(name: &str) -> Result<()> {
+    println!("Deleting profile '\x1b[1;36m{}\x1b[0m'...", name);
+    ProfileManager::delete_profile(name)?;
+    println!("\x1b[1;32mSuccessfully deleted profile '{}'!\x1b[0m", name);
+    Ok(())
+}
+
+pub async fn handle_rules_list(client: &MihomoClient) -> Result<()> {
+    println!("\x1b[1;36mFetching active rules from Mihomo core...\x1b[0m");
+    match client.get_rules().await {
+        Ok(resp) => {
+            println!("\x1b[1;36m{:<6} {:<20} {:<45} {:<20}\x1b[0m", "INDEX", "TYPE", "PAYLOAD / MATCH RULE", "PROXY TARGET");
+            println!("{}", "-".repeat(95));
+            for (idx, rule) in resp.rules.iter().enumerate() {
+                println!("{:<6} {:<20} {:<45} {:<20}", format!("#{}", idx + 1), rule.rule_type, rule.payload, rule.proxy);
+            }
+        }
+        Err(e) => println!("Error fetching rules: {}", e),
+    }
     Ok(())
 }
 

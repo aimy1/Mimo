@@ -193,7 +193,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .collect();
 
     let title_str = format!(
-        " 节点列表 Nodes in '{}' [{} 节点] [Enter:切换节点 | 'D':测速 | 's':搜索] ",
+        " 节点列表 Nodes in '{}' [{} 节点] [Enter:切换节点 | 't':测速 | 's':搜索] ",
         group_name,
         filtered_nodes.len()
     );

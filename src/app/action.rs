@@ -44,6 +44,8 @@ pub enum Action {
     GrantTunPrivilegeWithPassword(String),
     GrantTunPrivilegePkexec,
     TunPrivilegeResult(Result<(), String>),
+    RevokeTunPrivilege,
+    RevokeTunPrivilegeResult(Result<(), String>),
     StartCore,
     StopCore,
     RestartCore,
