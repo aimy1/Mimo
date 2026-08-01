@@ -321,37 +321,59 @@ impl App {
                     }
                     return Ok(false);
                 }
+                if self.state.is_searching {
+                    match key.code {
+                        KeyCode::Esc => {
+                            self.state.is_searching = false;
+                            self.state.search_query.clear();
+                        }
+                        KeyCode::Enter => {
+                            self.state.is_searching = false;
+                        }
+                        KeyCode::Backspace => {
+                            self.state.search_query.pop();
+                        }
+                        KeyCode::Up => self.move_selection(-1),
+                        KeyCode::Down => self.move_selection(1),
+                        KeyCode::Char(c) => {
+                            self.state.search_query.push(c);
+                        }
+                        _ => {}
+                    }
+                    return Ok(false);
+                }
 
-                // Layer 3: Global Hotkeys (Usable from anywhere when not typing)
+                // Layer 3: Global Hotkeys & Tab Switching
                 match key.code {
                     KeyCode::Char('q') => return Ok(true),
                     KeyCode::Char('?') => self.state.show_help = !self.state.show_help,
 
-                    // Universal Esc: Return Focus to Left Sidebar
+                    // Universal Esc: Reset Search & Dialogs
                     KeyCode::Esc => {
-                        self.state.focus_zone = FocusZone::Sidebar;
+                        self.state.is_searching = false;
+                        self.state.search_query.clear();
                     }
 
                     // Direct Tab Switch 1-8
-                    KeyCode::Char('1') => { self.state.active_tab = Tab::Dashboard; self.state.focus_zone = FocusZone::Workspace; }
-                    KeyCode::Char('2') => { self.state.active_tab = Tab::Proxies; self.state.focus_zone = FocusZone::Workspace; }
-                    KeyCode::Char('3') => { self.state.active_tab = Tab::Profiles; self.state.focus_zone = FocusZone::Workspace; }
-                    KeyCode::Char('4') => { self.state.active_tab = Tab::Rules; self.state.focus_zone = FocusZone::Workspace; }
-                    KeyCode::Char('5') => { self.state.active_tab = Tab::Connections; self.state.focus_zone = FocusZone::Workspace; }
-                    KeyCode::Char('6') => { self.state.active_tab = Tab::Traffic; self.state.focus_zone = FocusZone::Workspace; }
-                    KeyCode::Char('7') => { self.state.active_tab = Tab::Logs; self.state.focus_zone = FocusZone::Workspace; }
-                    KeyCode::Char('8') => { self.state.active_tab = Tab::Settings; self.state.focus_zone = FocusZone::Workspace; }
+                    KeyCode::Char('1') => self.state.active_tab = Tab::Dashboard,
+                    KeyCode::Char('2') => self.state.active_tab = Tab::Proxies,
+                    KeyCode::Char('3') => self.state.active_tab = Tab::Profiles,
+                    KeyCode::Char('4') => self.state.active_tab = Tab::Rules,
+                    KeyCode::Char('5') => self.state.active_tab = Tab::Connections,
+                    KeyCode::Char('6') => self.state.active_tab = Tab::Traffic,
+                    KeyCode::Char('7') => self.state.active_tab = Tab::Logs,
+                    KeyCode::Char('8') => self.state.active_tab = Tab::Settings,
 
                     // Tab / Shift+Tab Navigation
                     KeyCode::Tab => {
-                        if self.state.focus_zone == FocusZone::Workspace && self.state.active_tab == Tab::Settings {
+                        if self.state.active_tab == Tab::Settings {
                             self.state.settings_focus = (self.state.settings_focus + 1) % 12;
                         } else {
                             self.next_tab();
                         }
                     }
                     KeyCode::BackTab => {
-                        if self.state.focus_zone == FocusZone::Workspace && self.state.active_tab == Tab::Settings {
+                        if self.state.active_tab == Tab::Settings {
                             self.state.settings_focus = if self.state.settings_focus == 0 { 11 } else { self.state.settings_focus - 1 };
                         } else {
                             self.prev_tab();
@@ -364,207 +386,187 @@ impl App {
                     KeyCode::Char('x') | KeyCode::Char('X') => { let _ = self.action_tx.try_send(Action::ToggleTunMode); }
                     KeyCode::Char('r') | KeyCode::Char('R') if self.state.active_tab != Tab::Privileges => { let _ = self.action_tx.try_send(Action::RestartCore); }
 
-                    // Layer 4: Focus Zone & View Specific Keybindings
-                    _ => match self.state.focus_zone {
-                        FocusZone::Sidebar => match key.code {
-                            KeyCode::Up | KeyCode::Char('k') => self.prev_tab(),
-                            KeyCode::Down | KeyCode::Char('j') => self.next_tab(),
-                            KeyCode::Right | KeyCode::Char('l') | KeyCode::Enter => {
-                                self.state.focus_zone = FocusZone::Workspace;
-                            }
-                            _ => {}
-                        },
-                        FocusZone::Workspace => {
-                            // Specialized Input Handling for Settings View
-                            if self.state.active_tab == Tab::Settings {
-                                match key.code {
-                                    KeyCode::Up => self.state.settings_focus = if self.state.settings_focus == 0 { 11 } else { self.state.settings_focus - 1 },
-                                    KeyCode::Down => self.state.settings_focus = (self.state.settings_focus + 1) % 12,
-                                    KeyCode::Enter => {
-                                        if self.state.settings_focus == 11 {
-                                            let _ = self.action_tx.try_send(Action::SaveSettings);
-                                        } else {
-                                            self.state.settings_focus = (self.state.settings_focus + 1) % 12;
-                                        }
-                                    }
-                                    KeyCode::Char(' ') => {
-                                        match self.state.settings_focus {
-                                            0 => self.state.settings_api_url.push(' '),
-                                            1 => self.state.settings_secret.push(' '),
-                                            4 => self.state.settings_test_url.push(' '),
-                                            5 => self.state.settings_tun_stack = match self.state.settings_tun_stack.as_str() {
-                                                "system" => "gvisor".into(),
-                                                "gvisor" => "lwip".into(),
-                                                _ => "system".into(),
-                                            },
-                                            6 => self.state.settings_log_level = match self.state.settings_log_level.as_str() {
-                                                "info" => "warning".into(),
-                                                "warning" => "error".into(),
-                                                "error" => "debug".into(),
-                                                "debug" => "silent".into(),
-                                                _ => "info".into(),
-                                            },
-                                            7 => self.state.settings_allow_lan = !self.state.settings_allow_lan,
-                                            8 => self.state.settings_ipv6 = !self.state.settings_ipv6,
-                                            9 => self.state.settings_lang = if self.state.settings_lang == "zh" { "en".into() } else { "zh".into() },
-                                            10 => self.state.settings_refresh_ms = match self.state.settings_refresh_ms {
-                                                500 => 1000,
-                                                1000 => 2000,
-                                                _ => 500,
-                                            },
-                                            11 => { let _ = self.action_tx.try_send(Action::SaveSettings); }
-                                            _ => {}
-                                        }
-                                    }
-                                    KeyCode::Backspace => {
-                                        match self.state.settings_focus {
-                                            0 => { self.state.settings_api_url.pop(); }
-                                            1 => { self.state.settings_secret.pop(); }
-                                            2 => {
-                                                let mut s = self.state.settings_http_port.to_string();
-                                                s.pop();
-                                                self.state.settings_http_port = s.parse::<u16>().unwrap_or(0);
-                                            }
-                                            3 => {
-                                                let mut s = self.state.settings_socks_port.to_string();
-                                                s.pop();
-                                                self.state.settings_socks_port = s.parse::<u16>().unwrap_or(0);
-                                            }
-                                            4 => { self.state.settings_test_url.pop(); }
-                                            _ => {}
-                                        }
-                                    }
-                                    KeyCode::Char(c) => match self.state.settings_focus {
-                                        0 => self.state.settings_api_url.push(c),
-                                        1 => self.state.settings_secret.push(c),
-                                        2 => if c.is_ascii_digit() {
-                                            let mut s = self.state.settings_http_port.to_string();
-                                            if s == "0" { s.clear(); }
-                                            s.push(c);
-                                            if let Ok(p) = s.parse::<u16>() {
-                                                self.state.settings_http_port = p;
-                                            }
-                                        },
-                                        3 => if c.is_ascii_digit() {
-                                            let mut s = self.state.settings_socks_port.to_string();
-                                            if s == "0" { s.clear(); }
-                                            s.push(c);
-                                            if let Ok(p) = s.parse::<u16>() {
-                                                self.state.settings_socks_port = p;
-                                            }
-                                        },
-                                        4 => self.state.settings_test_url.push(c),
-                                        _ => match c {
-                                            'k' => self.state.settings_focus = if self.state.settings_focus == 0 { 11 } else { self.state.settings_focus - 1 },
-                                            'j' => self.state.settings_focus = (self.state.settings_focus + 1) % 12,
-                                            _ => {}
-                                        },
-                                    },
-                                    _ => {}
-                                }
-                                return Ok(false);
-                            }
-
+                    // Layer 4: View-Specific & Standard List Navigation Keybindings
+                    _ => {
+                        // Specialized Input Handling for Settings View
+                        if self.state.active_tab == Tab::Settings {
                             match key.code {
-                                // Movement in Active View List / Table
-                                KeyCode::Up | KeyCode::Char('k') => self.move_selection(-1),
-                                KeyCode::Down | KeyCode::Char('j') => self.move_selection(1),
-
-                                // Top & Bottom Jumps
-                                KeyCode::Char('g') | KeyCode::Home => self.jump_top(),
-                                KeyCode::Char('G') | KeyCode::End => self.jump_bottom(),
-
-                                // Horizontal Pane Movement
-                                KeyCode::Left | KeyCode::Char('h') => {
-                                    if self.state.active_tab == Tab::Proxies {
-                                        if self.state.proxy_sub_focus == ProxySubFocus::Nodes {
-                                            self.state.proxy_sub_focus = ProxySubFocus::Groups;
-                                        } else {
-                                            self.state.focus_zone = FocusZone::Sidebar;
-                                        }
+                                KeyCode::Up | KeyCode::Char('k') => self.state.settings_focus = if self.state.settings_focus == 0 { 11 } else { self.state.settings_focus - 1 },
+                                KeyCode::Down | KeyCode::Char('j') => self.state.settings_focus = (self.state.settings_focus + 1) % 12,
+                                KeyCode::Enter => {
+                                    if self.state.settings_focus == 11 {
+                                        let _ = self.action_tx.try_send(Action::SaveSettings);
                                     } else {
-                                        self.state.focus_zone = FocusZone::Sidebar;
+                                        self.state.settings_focus = (self.state.settings_focus + 1) % 12;
                                     }
                                 }
-                                KeyCode::Right | KeyCode::Char('l') => {
-                                    if self.state.active_tab == Tab::Proxies {
-                                        if self.state.proxy_sub_focus == ProxySubFocus::Groups {
-                                            self.state.proxy_sub_focus = ProxySubFocus::Nodes;
+                                KeyCode::Char(' ') => {
+                                    match self.state.settings_focus {
+                                        0 => self.state.settings_api_url.push(' '),
+                                        1 => self.state.settings_secret.push(' '),
+                                        4 => self.state.settings_test_url.push(' '),
+                                        5 => self.state.settings_tun_stack = match self.state.settings_tun_stack.as_str() {
+                                            "system" => "gvisor".into(),
+                                            "gvisor" => "lwip".into(),
+                                            _ => "system".into(),
+                                        },
+                                        6 => self.state.settings_log_level = match self.state.settings_log_level.as_str() {
+                                            "info" => "warning".into(),
+                                            "warning" => "error".into(),
+                                            "error" => "debug".into(),
+                                            "debug" => "silent".into(),
+                                            _ => "info".into(),
+                                        },
+                                        7 => self.state.settings_allow_lan = !self.state.settings_allow_lan,
+                                        8 => self.state.settings_ipv6 = !self.state.settings_ipv6,
+                                        9 => self.state.settings_lang = if self.state.settings_lang == "zh" { "en".into() } else { "zh".into() },
+                                        10 => self.state.settings_refresh_ms = match self.state.settings_refresh_ms {
+                                            500 => 1000,
+                                            1000 => 2000,
+                                            _ => 500,
+                                        },
+                                        11 => { let _ = self.action_tx.try_send(Action::SaveSettings); }
+                                        _ => {}
+                                    }
+                                }
+                                KeyCode::Backspace => {
+                                    match self.state.settings_focus {
+                                        0 => { self.state.settings_api_url.pop(); }
+                                        1 => { self.state.settings_secret.pop(); }
+                                        2 => {
+                                            let mut s = self.state.settings_http_port.to_string();
+                                            s.pop();
+                                            self.state.settings_http_port = s.parse::<u16>().unwrap_or(0);
                                         }
+                                        3 => {
+                                            let mut s = self.state.settings_socks_port.to_string();
+                                            s.pop();
+                                            self.state.settings_socks_port = s.parse::<u16>().unwrap_or(0);
+                                        }
+                                        4 => { self.state.settings_test_url.pop(); }
+                                        _ => {}
                                     }
                                 }
+                                KeyCode::Char(c) => match self.state.settings_focus {
+                                    0 => self.state.settings_api_url.push(c),
+                                    1 => self.state.settings_secret.push(c),
+                                    2 => if c.is_ascii_digit() {
+                                        let mut s = self.state.settings_http_port.to_string();
+                                        if s == "0" { s.clear(); }
+                                        s.push(c);
+                                        if let Ok(p) = s.parse::<u16>() {
+                                            self.state.settings_http_port = p;
+                                        }
+                                    },
+                                    3 => if c.is_ascii_digit() {
+                                        let mut s = self.state.settings_socks_port.to_string();
+                                        if s == "0" { s.clear(); }
+                                        s.push(c);
+                                        if let Ok(p) = s.parse::<u16>() {
+                                            self.state.settings_socks_port = p;
+                                        }
+                                    },
+                                    4 => self.state.settings_test_url.push(c),
+                                    _ => match c {
+                                        'k' => self.state.settings_focus = if self.state.settings_focus == 0 { 11 } else { self.state.settings_focus - 1 },
+                                        'j' => self.state.settings_focus = (self.state.settings_focus + 1) % 12,
+                                        _ => {}
+                                    },
+                                },
+                                _ => {}
+                            }
+                            return Ok(false);
+                        }
 
-                                // View Action Keybindings
-                                KeyCode::Char('/') => {
+                        match key.code {
+                            // Movement in Active View List / Table
+                            KeyCode::Up | KeyCode::Char('k') => self.move_selection(-1),
+                            KeyCode::Down | KeyCode::Char('j') => self.move_selection(1),
+
+                            // Top & Bottom Jumps
+                            KeyCode::Char('g') | KeyCode::Home => self.jump_top(),
+                            KeyCode::Char('G') | KeyCode::End => self.jump_bottom(),
+
+                            // Horizontal Pane Movement
+                            KeyCode::Left | KeyCode::Char('h') => {
+                                if self.state.active_tab == Tab::Proxies {
+                                    self.state.proxy_sub_focus = ProxySubFocus::Groups;
+                                }
+                            }
+                            KeyCode::Right | KeyCode::Char('l') => {
+                                if self.state.active_tab == Tab::Proxies {
+                                    self.state.proxy_sub_focus = ProxySubFocus::Nodes;
+                                }
+                            }
+
+                            // View Action Keybindings
+                            KeyCode::Char('/') => {
+                                self.state.is_searching = !self.state.is_searching;
+                                if !self.state.is_searching {
+                                    self.state.search_query.clear();
+                                }
+                            }
+                            KeyCode::Char('t') | KeyCode::Char('T') if self.state.active_tab == Tab::Proxies => self.test_selected_group_latency(),
+                            KeyCode::Char('o') | KeyCode::Char('O') if self.state.active_tab == Tab::Proxies => {
+                                self.state.sort_nodes_by_latency = !self.state.sort_nodes_by_latency;
+                                let status = if self.state.sort_nodes_by_latency { "已开启延迟升序排序" } else { "已恢复默认节点顺序" };
+                                self.state.push_toast(status.to_string());
+                            }
+                            KeyCode::Char('s') | KeyCode::Char('S') => {
+                                if self.state.active_tab == Tab::Connections {
+                                    self.state.sort_connections_by_traffic = !self.state.sort_connections_by_traffic;
+                                    let status = if self.state.sort_connections_by_traffic { "已开启连接流量降序排序" } else { "已恢复默认连接顺序" };
+                                    self.state.push_toast(status.to_string());
+                                } else {
                                     self.state.is_searching = !self.state.is_searching;
                                     if !self.state.is_searching {
                                         self.state.search_query.clear();
                                     }
                                 }
-                                KeyCode::Char('t') | KeyCode::Char('T') if self.state.active_tab == Tab::Proxies => self.test_selected_group_latency(),
-                                KeyCode::Char('o') | KeyCode::Char('O') if self.state.active_tab == Tab::Proxies => {
-                                    self.state.sort_nodes_by_latency = !self.state.sort_nodes_by_latency;
-                                    let status = if self.state.sort_nodes_by_latency { "已开启延迟升序排序" } else { "已恢复默认节点顺序" };
-                                    self.state.push_toast(status.to_string());
-                                }
-                                KeyCode::Char('s') | KeyCode::Char('S') => {
-                                    if self.state.active_tab == Tab::Connections {
-                                        self.state.sort_connections_by_traffic = !self.state.sort_connections_by_traffic;
-                                        let status = if self.state.sort_connections_by_traffic { "已开启连接流量降序排序" } else { "已恢复默认连接顺序" };
-                                        self.state.push_toast(status.to_string());
-                                    } else {
-                                        self.state.is_searching = !self.state.is_searching;
-                                        if !self.state.is_searching {
-                                            self.state.search_query.clear();
-                                        }
-                                    }
-                                }
-                                KeyCode::Enter => {
-                                    self.confirm_selection().await;
-                                }
-                                KeyCode::Char('a') | KeyCode::Char('A') if self.state.active_tab == Tab::Profiles => {
-                                    self.state.profile_name_input.clear();
-                                    self.state.profile_url_input.clear();
-                                    self.state.profile_input_focus = 0;
-                                    self.state.show_profile_input = true;
-                                }
-                                KeyCode::Char('u') | KeyCode::Char('U') if self.state.active_tab == Tab::Profiles => {
-                                    if let Some(p) = self.state.profiles.get(self.state.selected_profile_idx) {
-                                        if let Some(url) = p.url.clone() {
-                                            let name = p.name.clone();
-                                            let _ = self.action_tx.try_send(Action::AddProfile { name, url });
-                                        }
-                                    }
-                                }
-                                KeyCode::Char('d') | KeyCode::Char('D') => {
-                                    if self.state.active_tab == Tab::Proxies {
-                                        self.test_single_node_latency();
-                                    } else if self.state.active_tab == Tab::Profiles {
-                                        if let Some(p) = self.state.profiles.get(self.state.selected_profile_idx) {
-                                            let name = p.name.clone();
-                                            let _ = self.action_tx.try_send(Action::DeleteProfile(name));
-                                        }
-                                    } else if self.state.active_tab == Tab::Connections {
-                                        if key.code == KeyCode::Char('D') {
-                                            let _ = self.action_tx.try_send(Action::CloseAllConnections);
-                                        } else {
-                                            self.close_selected_connection().await;
-                                        }
-                                    }
-                                }
-                                KeyCode::Char('c') | KeyCode::Char('C') if self.state.active_tab == Tab::Logs => {
-                                    let _ = self.action_tx.try_send(Action::ClearLogs);
-                                }
-                                KeyCode::Char('p') | KeyCode::Char('P') if self.state.active_tab == Tab::Privileges => {
-                                    let _ = self.action_tx.try_send(Action::ShowTunModal);
-                                }
-                                KeyCode::Char('r') | KeyCode::Char('R') if self.state.active_tab == Tab::Privileges => {
-                                    let _ = self.action_tx.try_send(Action::RevokeTunPrivilege);
-                                }
-                                _ => {}
                             }
+                            KeyCode::Enter => {
+                                self.confirm_selection().await;
+                            }
+                            KeyCode::Char('a') | KeyCode::Char('A') if self.state.active_tab == Tab::Profiles => {
+                                self.state.profile_name_input.clear();
+                                self.state.profile_url_input.clear();
+                                self.state.profile_input_focus = 0;
+                                self.state.show_profile_input = true;
+                            }
+                            KeyCode::Char('u') | KeyCode::Char('U') if self.state.active_tab == Tab::Profiles => {
+                                if let Some(p) = self.state.profiles.get(self.state.selected_profile_idx) {
+                                    if let Some(url) = p.url.clone() {
+                                        let name = p.name.clone();
+                                        let _ = self.action_tx.try_send(Action::AddProfile { name, url });
+                                    }
+                                }
+                            }
+                            KeyCode::Char('d') | KeyCode::Char('D') => {
+                                if self.state.active_tab == Tab::Proxies {
+                                    self.test_single_node_latency();
+                                } else if self.state.active_tab == Tab::Profiles {
+                                    if let Some(p) = self.state.profiles.get(self.state.selected_profile_idx) {
+                                        let name = p.name.clone();
+                                        let _ = self.action_tx.try_send(Action::DeleteProfile(name));
+                                    }
+                                } else if self.state.active_tab == Tab::Connections {
+                                    if key.code == KeyCode::Char('D') {
+                                        let _ = self.action_tx.try_send(Action::CloseAllConnections);
+                                    } else {
+                                        self.close_selected_connection().await;
+                                    }
+                                }
+                            }
+                            KeyCode::Char('c') | KeyCode::Char('C') if self.state.active_tab == Tab::Logs => {
+                                self.state.logs.clear();
+                                self.state.push_toast("Logs cleared".to_string());
+                            }
+                            KeyCode::Char('r') | KeyCode::Char('R') if self.state.active_tab == Tab::Privileges => {
+                                let _ = self.action_tx.try_send(Action::RevokeTunPrivilege);
+                            }
+                            _ => {}
                         }
-                    },
+                    }
                 }
             }
 
