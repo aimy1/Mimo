@@ -47,6 +47,7 @@ pub fn render(f: &mut Frame, state: &AppState) {
         Tab::Logs => views::logs::render(f, state, workspace_layout[1]),
         Tab::Settings => views::settings::render(f, state, workspace_layout[1]),
         Tab::Privileges => views::privilege::render(f, state, workspace_layout[1]),
+        Tab::About => views::about::render(f, state, workspace_layout[1]),
     }
 
     // 4. Footer

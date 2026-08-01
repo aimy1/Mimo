@@ -363,6 +363,7 @@ impl App {
                     KeyCode::Char('6') => self.state.active_tab = Tab::Traffic,
                     KeyCode::Char('7') => self.state.active_tab = Tab::Logs,
                     KeyCode::Char('8') => self.state.active_tab = Tab::Settings,
+                    KeyCode::Char('9') => self.state.active_tab = Tab::About,
 
                     // Tab / Shift+Tab Navigation
                     KeyCode::Tab => {

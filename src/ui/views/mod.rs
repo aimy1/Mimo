@@ -1,3 +1,4 @@
+pub mod about;
 pub mod connections;
 pub mod dashboard;
 pub mod logs;

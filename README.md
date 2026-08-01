@@ -30,7 +30,7 @@
 
 ## 📊 功能模块全览 (Workspace Views)
 
-Mimo 拥有 **8 大全功能工作区**：
+Mimo 拥有 **9 大全功能工作区**：
 
 1. **🌐 仪表盘 (Dashboard)**：显示 Mihomo 核心状态、**公网出口 IP 诊断**、模式/节点信息、硬件 CPU / RAM Gauges 与上下行实时 Btop 速率 Sparklines。
 2. **⚡ 代理节点 (Proxies)**：全协议 Badge 标注 (`SS`/`Vmess`/`Vless`/`Trojan`/`Hysteria2`/`Tuic`)、**一键全量并发测速 (`t`)**、**单个节点独立测速 (`d`)**、**延迟升序重排 (`o`)** 与实时节点搜索 (`/`)。
@@ -40,6 +40,7 @@ Mimo 拥有 **8 大全功能工作区**：
 6. **📈 流量趋势 (Traffic)**：高精上下行速率仪表盘与历史平滑趋势 Sparkline 图表。
 7. **📝 运行日志 (Logs)**：基于 WebSocket 的实时日志流，支持 `[ALL]` `[INFO]` `[WARN]` `[ERR]` `[DBG]` 分级过滤与一键清空 (`c`)。
 8. **⚙️ 综合设置 (Settings)**：莫兰迪分组双列卡片布局，支持配置 REST API 端口、鉴权 Token、代理端口、节点测速链接、界面刷新率、TUN 网络协议栈、日志等级、Allow LAN（局域网共享）与 IPv6 开关。
+9. **ℹ️ 关于 Mimo (About)**：软件版本信息、ASCII 艺术标语、构建架构元数据与开源致谢列表。
 
 ---
 

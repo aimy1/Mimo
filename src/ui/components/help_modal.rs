@@ -34,7 +34,7 @@ pub fn render(f: &mut Frame, area: Rect, lang_str: &str) {
             ]),
             Line::from(vec![
                 Span::styled("  Tab / 1-9         ", Style::default().fg(Color::Yellow)),
-                Span::raw(": 顺序切换 / 数字直达 9 大页面 (含 9-权限管理)"),
+                Span::raw(": 顺序切换 / 数字直达 9 大页面 (9: 关于页面)"),
             ]),
             Line::from(vec![
                 Span::styled("  Enter             ", Style::default().fg(Color::Yellow)),
