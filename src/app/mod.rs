@@ -614,8 +614,8 @@ impl App {
 
                         // 1. Click on Left Sidebar Navigation Bar (Column < 18)
                         if col < 18 {
-                            if row >= 4 && row <= 12 {
-                                let tab_idx = (row - 4) as usize;
+                            if row >= 4 && row <= 14 {
+                                let tab_idx = (row - 5) as usize;
                                 if let Some(tab) = Tab::ALL.get(tab_idx) {
                                     self.state.active_tab = *tab;
                                     self.state.focus_zone = FocusZone::Sidebar;
@@ -624,12 +624,14 @@ impl App {
                         }
                         // 2. Click on Top Control Pills Bar (Row <= 2, Column >= 18)
                         else if row <= 2 {
-                            if col >= 18 && col < 48 {
+                            if col >= 18 && col < 42 {
                                 self.cycle_mode();
-                            } else if col >= 48 && col < 73 {
+                            } else if col >= 42 && col < 66 {
                                 let _ = self.action_tx.try_send(Action::ToggleSystemProxy);
-                            } else if col >= 73 && col < 93 {
+                            } else if col >= 66 && col < 84 {
                                 let _ = self.action_tx.try_send(Action::ToggleTunMode);
+                            } else if col >= 84 {
+                                let _ = self.action_tx.try_send(Action::RestartCore);
                             }
                         }
                         // 3. Tab Specific Workspace Clicks (Switches Focus to Workspace)
@@ -637,29 +639,55 @@ impl App {
                             self.state.focus_zone = FocusZone::Workspace;
 
                             if self.state.active_tab == Tab::Settings {
-                                if row >= 3 && row <= 5 {
-                                    self.state.settings_focus = 0;
-                                    self.state.settings_lang = if self.state.settings_lang == "zh" { "en".into() } else { "zh".into() };
-                                } else if row >= 6 && row <= 8 {
-                                    self.state.settings_focus = 1;
-                                } else if row >= 9 && row <= 11 {
-                                    self.state.settings_focus = 2;
-                                } else if row >= 12 && row <= 14 {
-                                    self.state.settings_focus = 3;
-                                    self.state.settings_refresh_ms = match self.state.settings_refresh_ms {
-                                        500 => 1000,
-                                        1000 => 2000,
-                                        _ => 500,
-                                    };
-                                } else if row >= 15 && row <= 17 {
-                                    self.state.settings_focus = 4;
-                                } else if row >= 18 && row <= 20 {
-                                    self.state.settings_focus = 5;
-                                } else if row >= 21 && row <= 23 {
-                                    self.state.settings_focus = 6;
-                                } else if row >= 24 {
-                                    self.state.settings_focus = 7;
-                                    let _ = self.action_tx.try_send(Action::SaveSettings);
+                                if col < 55 {
+                                    if row >= 4 && row <= 6 {
+                                        self.state.settings_focus = 0;
+                                    } else if row >= 7 && row <= 9 {
+                                        self.state.settings_focus = 1;
+                                    } else if row >= 10 && row <= 12 {
+                                        self.state.settings_focus = 2;
+                                    } else if row >= 13 && row <= 15 {
+                                        self.state.settings_focus = 3;
+                                    } else if row >= 16 {
+                                        self.state.settings_focus = 4;
+                                    }
+                                } else {
+                                    if row >= 4 && row <= 6 {
+                                        self.state.settings_focus = 5;
+                                        self.state.settings_tun_stack = match self.state.settings_tun_stack.as_str() {
+                                            "system" => "gvisor".into(),
+                                            "gvisor" => "lwip".into(),
+                                            _ => "system".into(),
+                                        };
+                                    } else if row >= 7 && row <= 9 {
+                                        self.state.settings_focus = 6;
+                                        self.state.settings_log_level = match self.state.settings_log_level.as_str() {
+                                            "info" => "warning".into(),
+                                            "warning" => "error".into(),
+                                            "error" => "debug".into(),
+                                            "debug" => "silent".into(),
+                                            _ => "info".into(),
+                                        };
+                                    } else if row >= 10 && row <= 12 {
+                                        self.state.settings_focus = 7;
+                                        self.state.settings_allow_lan = !self.state.settings_allow_lan;
+                                    } else if row >= 13 && row <= 15 {
+                                        self.state.settings_focus = 8;
+                                        self.state.settings_ipv6 = !self.state.settings_ipv6;
+                                    } else if row >= 16 && row <= 18 {
+                                        self.state.settings_focus = 9;
+                                        self.state.settings_lang = if self.state.settings_lang == "zh" { "en".into() } else { "zh".into() };
+                                    } else if row >= 19 && row <= 21 {
+                                        self.state.settings_focus = 10;
+                                        self.state.settings_refresh_ms = match self.state.settings_refresh_ms {
+                                            500 => 1000,
+                                            1000 => 2000,
+                                            _ => 500,
+                                        };
+                                    } else if row >= 22 {
+                                        self.state.settings_focus = 11;
+                                        let _ = self.action_tx.try_send(Action::SaveSettings);
+                                    }
                                 }
                             } else if self.state.active_tab == Tab::Profiles {
                                 if row <= 5 {
@@ -682,30 +710,14 @@ impl App {
                                         }
                                     }
                                 } else {
-                                    let click_idx = (row - 6) as usize;
+                                    let click_idx = (row - 5) as usize;
                                     if click_idx < self.state.profiles.len() {
                                         self.state.selected_profile_idx = click_idx;
                                         self.confirm_selection().await;
                                     }
                                 }
-                            } else if self.state.active_tab == Tab::Logs {
-                                if row <= 5 {
-                                    if col >= 30 && col < 36 {
-                                        let _ = self.action_tx.try_send(Action::SetLogFilter("all".into()));
-                                    } else if col >= 37 && col < 43 {
-                                        let _ = self.action_tx.try_send(Action::SetLogFilter("info".into()));
-                                    } else if col >= 44 && col < 50 {
-                                        let _ = self.action_tx.try_send(Action::SetLogFilter("warn".into()));
-                                    } else if col >= 51 && col < 57 {
-                                        let _ = self.action_tx.try_send(Action::SetLogFilter("error".into()));
-                                    } else if col >= 58 && col < 64 {
-                                        let _ = self.action_tx.try_send(Action::SetLogFilter("debug".into()));
-                                    } else if col >= 65 {
-                                        let _ = self.action_tx.try_send(Action::ClearLogs);
-                                    }
-                                }
                             } else if self.state.active_tab == Tab::Proxies {
-                                if col < 45 {
+                                if col < 50 {
                                     self.state.proxy_sub_focus = ProxySubFocus::Groups;
                                     if row >= 4 {
                                         let click_idx = (row - 4) as usize;
