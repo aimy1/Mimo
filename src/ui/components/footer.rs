@@ -42,8 +42,8 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
 
     if let Some((toast_msg, _)) = &state.toast {
         spans.push(Span::styled(
-            format!(" | 🔔 {}", toast_msg),
-            Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+            format!(" [ 🔔 {} ] ", toast_msg),
+            Style::default().fg(Color::Rgb(17, 17, 27)).bg(Color::Rgb(249, 226, 175)).add_modifier(Modifier::BOLD),
         ));
     }
 
