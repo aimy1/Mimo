@@ -2,6 +2,7 @@
 
 <div align="center">
 
+![Author](https://img.shields.io/badge/Author-aisaniya-purple.svg?style=for-the-badge)
 ![Rust](https://img.shields.io/badge/Language-Rust-orange.svg?style=for-the-badge&logo=rust)
 ![Ratatui](https://img.shields.io/badge/UI-Ratatui-blue.svg?style=for-the-badge)
 ![Core](https://img.shields.io/badge/Core-Mihomo%20%2F%20Clash%20Meta-red.svg?style=for-the-badge)
@@ -9,7 +10,7 @@
 
 <p align="center">
   <b>现代化、极轻量、极速响应的 Linux 终端 TUI & CLI 代理控制中心</b><br>
-  完全对标桌面级 <b>Clash Verge Rev</b> 核心能力，拥有极致的 <b>Catppuccin Morandi</b> 暗黑极简美学
+  <b>Author: aisaniya</b> | 完全对标桌面级 <b>Clash Verge Rev</b> 核心能力，拥有极致的 <b>Catppuccin Morandi</b> 暗黑极简美学
 </p>
 
 </div>

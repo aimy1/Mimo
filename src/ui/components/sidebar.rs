@@ -15,30 +15,43 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3), // Logo Header
+            Constraint::Length(4), // Modern Logo & Author Header Banner
             Constraint::Min(0),    // Navigation List
-            Constraint::Length(4), // Bottom Active Profile Status Card
+            Constraint::Length(5), // Extended Status Card
         ])
         .split(area);
 
-    // 1. Top Logo Header
-    let logo_text = vec![Line::from(vec![
-        Span::styled(" MIMO ", Style::default().fg(Theme::BORDER_FOCUS).add_modifier(Modifier::BOLD)),
-        Span::styled("v0.1.0", Style::default().fg(Theme::TEXT_MUTED)),
-    ])];
+    // 1. Top Logo & Author Header
+    let logo_text = vec![
+        Line::from(vec![
+            Span::styled(" ⚡ MIMO ", Style::default().fg(Color::Rgb(203, 166, 247)).add_modifier(Modifier::BOLD)),
+            Span::styled("v0.1.0", Style::default().fg(Theme::TEXT_MUTED)),
+        ]),
+        Line::from(vec![
+            Span::styled(" by ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled("aisaniya", Style::default().fg(Color::Rgb(249, 226, 175)).add_modifier(Modifier::BOLD)),
+        ]),
+    ];
+
+    let header_border_style = if state.focus_zone == crate::app::state::FocusZone::Sidebar {
+        Style::default().fg(Theme::BORDER_FOCUS)
+    } else {
+        Style::default().fg(Theme::BORDER)
+    };
+
     let logo_block = Paragraph::new(logo_text)
         .block(
             Block::default()
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded)
-                .border_style(Style::default().fg(Theme::BORDER_FOCUS)),
+                .border_style(header_border_style),
         )
         .alignment(ratatui::layout::Alignment::Center);
     f.render_widget(logo_block, chunks[0]);
 
-    // 2. Minimalist Navigation List
+    // 2. Optimized Navigation List with Shortcut Badges
     let icons = [
-        "📊 ", "⚡ ", "📁 ", "📜 ", "🔗 ", "📈 ", "📝 ", "⚙️ ", "🔒 ",
+        "📊", "⚡", "📁", "🛣️", "🔌", "📈", "📝", "⚙️", "🛡️", "ℹ️",
     ];
 
     let items: Vec<ListItem> = Tab::ALL
@@ -46,18 +59,39 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .enumerate()
         .map(|(idx, tab)| {
             let is_selected = state.active_tab == *tab;
-            let icon = icons.get(idx).unwrap_or(&"  ");
+            let icon = icons.get(idx).copied().unwrap_or("📌");
             let title = tab.title(lang);
-            let indicator = if is_selected { "● " } else { "  " };
 
-            let style = if is_selected {
-                Theme::SIDEBAR_SELECTED
+            // Shortcut key index badge [1] .. [9], [0]
+            let shortcut_str = if idx < 9 {
+                format!("[{}] ", idx + 1)
             } else {
-                Style::default().fg(Color::Rgb(205, 214, 244))
+                "[0] ".to_string()
+            };
+
+            let (indicator, style, shortcut_style) = if is_selected {
+                (
+                    "▶ ",
+                    Style::default()
+                        .fg(Color::Rgb(17, 17, 27))
+                        .bg(Color::Rgb(203, 166, 247))
+                        .add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .fg(Color::Rgb(30, 30, 46))
+                        .bg(Color::Rgb(203, 166, 247))
+                        .add_modifier(Modifier::BOLD),
+                )
+            } else {
+                (
+                    "  ",
+                    Style::default().fg(Color::Rgb(205, 214, 244)),
+                    Style::default().fg(Color::Rgb(147, 153, 178)),
+                )
             };
 
             let line = Line::from(vec![
-                Span::styled(indicator, if is_selected { Style::default().fg(Color::Rgb(17, 17, 27)) } else { Style::default().fg(Theme::BORDER_FOCUS) }),
+                Span::styled(indicator, if is_selected { Style::default().fg(Color::Rgb(17, 17, 27)).bg(Color::Rgb(203, 166, 247)) } else { Style::default().fg(Theme::TEXT_MUTED) }),
+                Span::styled(shortcut_str, shortcut_style),
                 Span::styled(format!("{} ", icon), style),
                 Span::styled(format!("{:<8}", title.trim()), style),
             ]);
@@ -66,26 +100,20 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         })
         .collect();
 
-    let sidebar_border_style = if state.focus_zone == crate::app::state::FocusZone::Sidebar {
-        Style::default().fg(Theme::BORDER_FOCUS)
-    } else {
-        Style::default().fg(Theme::BORDER)
-    };
-
     let sidebar_list = List::new(items)
         .block(
             Block::default()
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded)
-                .border_style(sidebar_border_style)
-                .title(Span::styled(" 导航 Menu ", Style::default().fg(Theme::TEXT_MUTED))),
+                .border_style(header_border_style)
+                .title(Span::styled(" 导航 Menu [1-9] ", Style::default().fg(Theme::TEXT_MUTED))),
         );
 
     let mut state_list = ListState::default();
     state_list.select(Some(state.active_tab as usize));
     f.render_stateful_widget(sidebar_list, chunks[1], &mut state_list);
 
-    // 3. Bottom Status Card
+    // 3. Extended Status Card
     let active_profile = state
         .profiles
         .iter()
@@ -93,19 +121,38 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .map(|p| p.name.as_str())
         .unwrap_or("Default");
 
+    let tun_status_span = if state.is_tun_enabled {
+        Span::styled("TUN: ON", Style::default().fg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD))
+    } else {
+        Span::styled("TUN: OFF", Style::default().fg(Theme::TEXT_MUTED))
+    };
+
+    let mode_str = state
+        .config
+        .as_ref()
+        .and_then(|c| c.mode.clone())
+        .unwrap_or_else(|| "Rule".into());
+
     let card_text = vec![
         Line::from(vec![
-            Span::styled("配置: ", Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled(active_profile, Style::default().fg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD)),
+            Span::styled(" 订阅: ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(active_profile, Style::default().fg(Color::Rgb(137, 220, 235)).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
-            Span::styled("模式: ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(" 模式: ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(mode_str, Style::default().fg(Theme::MODE_BADGE).add_modifier(Modifier::BOLD)),
+            Span::raw(" | "),
+            tun_status_span,
+        ]),
+        Line::from(vec![
+            Span::styled(" 出口: ", Style::default().fg(Theme::TEXT_MUTED)),
             Span::styled(
-                state.config.as_ref().and_then(|c| c.mode.clone()).unwrap_or_else(|| "Rule".into()),
-                Style::default().fg(Theme::MODE_BADGE).add_modifier(Modifier::BOLD),
+                state.outbound_ip.as_deref().unwrap_or("检测中..."),
+                Style::default().fg(Color::Rgb(249, 226, 175)),
             ),
         ]),
     ];
+
     let card_block = Paragraph::new(card_text)
         .block(
             Block::default()

@@ -80,6 +80,10 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
             Span::styled("Mimo (Minimalist Mihomo Manager)", Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
+            Span::styled(" 软件作者 (Author) : ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled("aisaniya", Style::default().fg(Color::Rgb(243, 139, 168)).add_modifier(Modifier::BOLD)),
+        ]),
+        Line::from(vec![
             Span::styled(" 当前版本 (Version): ", Style::default().fg(Theme::TEXT_MUTED)),
             Span::styled("v0.1.0 (Rust 2021 Edition)", Style::default().fg(Theme::ACTIVE_GREEN)),
         ]),

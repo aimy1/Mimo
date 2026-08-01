@@ -2,7 +2,7 @@
 name = "mimo"
 version = "0.1.0"
 edition = "2024"
-authors = ["fd <fd@fedora>"]
+authors = ["aisaniya <aimy1@github>"]
 description = "Minimal Mihomo Manager TUI for Linux"
 
 [dependencies]
