@@ -26,15 +26,19 @@ pub fn render(f: &mut Frame, area: Rect, lang_str: &str) {
             ]),
             Line::from(vec![
                 Span::styled("  j / k / ↑ / ↓     ", Style::default().fg(Color::Yellow)),
-                Span::raw(": 上下移动列表/表格焦点"),
+                Span::raw(": 上下逐行移动列表/表格焦点"),
+            ]),
+            Line::from(vec![
+                Span::styled("  Ctrl+d / Ctrl+u   ", Style::default().fg(Color::Yellow)),
+                Span::raw(": 列表半页快速翻页 (PageDown / PageUp)"),
             ]),
             Line::from(vec![
                 Span::styled("  g / G             ", Style::default().fg(Color::Yellow)),
                 Span::raw(": 一键跳至列表 顶部(g) 或 底部(G)"),
             ]),
             Line::from(vec![
-                Span::styled("  Tab / 1-9         ", Style::default().fg(Color::Yellow)),
-                Span::raw(": 顺序切换 / 数字直达 9 大页面 (9: 关于页面)"),
+                Span::styled("  Tab / 1-9 / 0 / [ ]", Style::default().fg(Color::Yellow)),
+                Span::raw(": 切换/直达 10 大页面 (0: 关于页面)"),
             ]),
             Line::from(vec![
                 Span::styled("  Enter             ", Style::default().fg(Color::Yellow)),

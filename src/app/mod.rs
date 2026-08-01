@@ -343,18 +343,34 @@ impl App {
                     return Ok(false);
                 }
 
-                // Layer 3: Global Hotkeys & Tab Switching
+                // Layer 3: Global Hotkeys, Ctrl Commands & Tab Switching
+                if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
+                    match key.code {
+                        KeyCode::Char('c') => return Ok(true),
+                        KeyCode::Char('d') => { self.move_selection(5); return Ok(false); }
+                        KeyCode::Char('u') => { self.move_selection(-5); return Ok(false); }
+                        KeyCode::Char('s') => {
+                            if self.state.active_tab == Tab::Settings {
+                                let _ = self.action_tx.try_send(Action::SaveSettings);
+                            }
+                            return Ok(false);
+                        }
+                        _ => {}
+                    }
+                }
+
                 match key.code {
                     KeyCode::Char('q') => return Ok(true),
                     KeyCode::Char('?') => self.state.show_help = !self.state.show_help,
 
-                    // Universal Esc: Reset Search & Dialogs
+                    // Universal Esc: Reset Search & Dialogs & Reset Focus
                     KeyCode::Esc => {
                         self.state.is_searching = false;
                         self.state.search_query.clear();
+                        self.state.focus_zone = FocusZone::Workspace;
                     }
 
-                    // Direct Tab Switch 1-8
+                    // Direct Tab Switch 1-9 & 0
                     KeyCode::Char('1') => self.state.active_tab = Tab::Dashboard,
                     KeyCode::Char('2') => self.state.active_tab = Tab::Proxies,
                     KeyCode::Char('3') => self.state.active_tab = Tab::Profiles,
@@ -363,17 +379,18 @@ impl App {
                     KeyCode::Char('6') => self.state.active_tab = Tab::Traffic,
                     KeyCode::Char('7') => self.state.active_tab = Tab::Logs,
                     KeyCode::Char('8') => self.state.active_tab = Tab::Settings,
-                    KeyCode::Char('9') => self.state.active_tab = Tab::About,
+                    KeyCode::Char('9') => self.state.active_tab = Tab::Privileges,
+                    KeyCode::Char('0') => self.state.active_tab = Tab::About,
 
-                    // Tab / Shift+Tab Navigation
-                    KeyCode::Tab => {
+                    // Tab / Shift+Tab / [ / ] Navigation
+                    KeyCode::Tab | KeyCode::Char(']') => {
                         if self.state.active_tab == Tab::Settings {
                             self.state.settings_focus = (self.state.settings_focus + 1) % 12;
                         } else {
                             self.next_tab();
                         }
                     }
-                    KeyCode::BackTab => {
+                    KeyCode::BackTab | KeyCode::Char('[') => {
                         if self.state.active_tab == Tab::Settings {
                             self.state.settings_focus = if self.state.settings_focus == 0 { 11 } else { self.state.settings_focus - 1 };
                         } else {
@@ -483,6 +500,8 @@ impl App {
                             // Movement in Active View List / Table
                             KeyCode::Up | KeyCode::Char('k') => self.move_selection(-1),
                             KeyCode::Down | KeyCode::Char('j') => self.move_selection(1),
+                            KeyCode::PageUp => self.move_selection(-5),
+                            KeyCode::PageDown => self.move_selection(5),
 
                             // Top & Bottom Jumps
                             KeyCode::Char('g') | KeyCode::Home => self.jump_top(),
@@ -1178,7 +1197,7 @@ impl App {
                 self.state.log_scroll = (current + delta).max(0) as usize;
             }
             Tab::Settings => {
-                self.state.settings_focus = (self.state.settings_focus as i32 + delta).rem_euclid(8) as usize;
+                self.state.settings_focus = (self.state.settings_focus as i32 + delta).rem_euclid(12) as usize;
             }
             _ => {}
         }
