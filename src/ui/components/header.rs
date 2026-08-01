@@ -12,9 +12,9 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
-            Constraint::Length(30), // Mode Switcher Pill
-            Constraint::Length(25), // System Proxy Pill
-            Constraint::Length(20), // TUN Pill
+            Constraint::Length(24), // Mode Switcher Pill
+            Constraint::Length(24), // System Proxy Pill
+            Constraint::Length(18), // TUN Pill
             Constraint::Min(0),    // Speed Readout
         ])
         .split(area);
@@ -26,9 +26,9 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .unwrap_or_else(|| "Rule".into());
 
     let mode_pill = vec![Line::from(vec![
-        Span::styled(" 模式 Mode: ", Style::default().fg(Theme::TEXT_MUTED)),
+        Span::styled(" Mode: ", Style::default().fg(Theme::TEXT_MUTED)),
         Span::styled(format!(" {} ", mode_str), Style::default().fg(Color::Rgb(17, 17, 27)).bg(Theme::MODE_BADGE).add_modifier(Modifier::BOLD)),
-        Span::raw(" (m)"),
+        Span::styled(" (m)", Style::default().fg(Theme::TEXT_MUTED)),
     ])];
     let mode_block = Paragraph::new(mode_pill).block(
         Block::default()
@@ -43,11 +43,11 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     } else {
         Style::default().fg(Theme::TEXT_MUTED)
     };
-    let sys_proxy_str = if state.is_sysproxy_enabled { " ON 已开启 " } else { " OFF 已关闭 " };
+    let sys_proxy_str = if state.is_sysproxy_enabled { " ON " } else { " OFF " };
     let sys_proxy_pill = vec![Line::from(vec![
-        Span::styled(" 系统代理: ", Style::default().fg(Theme::TEXT_MUTED)),
+        Span::styled(" SysProxy: ", Style::default().fg(Theme::TEXT_MUTED)),
         Span::styled(sys_proxy_str, sys_proxy_style),
-        Span::raw(" (p)"),
+        Span::styled(" (p)", Style::default().fg(Theme::TEXT_MUTED)),
     ])];
     let sys_proxy_block = Paragraph::new(sys_proxy_pill).block(
         Block::default()
@@ -66,7 +66,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     let tun_pill = vec![Line::from(vec![
         Span::styled(" TUN: ", Style::default().fg(Theme::TEXT_MUTED)),
         Span::styled(tun_str, tun_style),
-        Span::raw(" (x)"),
+        Span::styled(" (x)", Style::default().fg(Theme::TEXT_MUTED)),
     ])];
     let tun_block = Paragraph::new(tun_pill).block(
         Block::default()
@@ -78,10 +78,10 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
 
     let traffic_text = Line::from(vec![
         Span::styled("▲ ", Style::default().fg(Theme::TRAFFIC_UP).add_modifier(Modifier::BOLD)),
-        Span::raw(format_speed(state.current_traffic.up)),
-        Span::raw("   "),
+        Span::styled(format_speed(state.current_traffic.up), Style::default().fg(Color::White)),
+        Span::raw("  "),
         Span::styled("▼ ", Style::default().fg(Theme::TRAFFIC_DOWN).add_modifier(Modifier::BOLD)),
-        Span::raw(format_speed(state.current_traffic.down)),
+        Span::styled(format_speed(state.current_traffic.down), Style::default().fg(Color::White)),
     ]);
     let traffic_widget = Paragraph::new(traffic_text)
         .block(

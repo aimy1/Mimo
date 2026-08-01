@@ -11,22 +11,19 @@ use ratatui::{
 pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .margin(1)
         .constraints([
-            Constraint::Length(4),  // Header description
-            Constraint::Length(12), // TUN privilege card
-            Constraint::Length(8),  // GSettings card
-            Constraint::Min(4),     // Action & Instructions
+            Constraint::Length(3),  // Header description
+            Constraint::Length(10), // TUN privilege card
+            Constraint::Length(6),  // GSettings card
+            Constraint::Min(3),     // Action & Instructions
         ])
         .split(area);
 
     // 1. Header description
     let header_text = vec![
         Line::from(vec![
-            Span::styled(" 🔒 系统权限管理与提权控制中心 ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
-        ]),
-        Line::from(vec![
-            Span::styled(" 本页面用于管理 Mimo 及 Mihomo 核心所需的 Linux 系统高级接口与 TUN 虚拟网卡权限。", Style::default().fg(Color::DarkGray)),
+            Span::styled(" 🔒 系统权限管理与提权控制 ", Style::default().fg(Color::Rgb(249, 226, 175)).add_modifier(Modifier::BOLD)),
+            Span::styled(" (Linux CAP_NET_ADMIN & GSettings)", Style::default().fg(Theme::TEXT_MUTED)),
         ]),
     ];
     let header_p = Paragraph::new(header_text).block(
@@ -40,23 +37,23 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     // 2. TUN Privilege Card
     let is_auth = state.is_tun_privileged;
     let auth_badge = if is_auth {
-        Span::styled(" [ ✔ 已授权 CAP_NET_ADMIN ] ", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD))
+        Span::styled(" [ ✔ 已授权 ] ", Style::default().fg(Color::Rgb(17, 17, 27)).bg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD))
     } else {
-        Span::styled(" [ ✖ 未授权 CAP_NET_ADMIN ] ", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD))
+        Span::styled(" [ ✖ 未授权 ] ", Style::default().fg(Color::White).bg(Color::Rgb(243, 139, 168)).add_modifier(Modifier::BOLD))
     };
 
     let tun_state_badge = if state.is_tun_enabled {
-        Span::styled(" [ ● TUN 模式: 已开启 ] ", Style::default().fg(Color::Black).bg(Color::Green).add_modifier(Modifier::BOLD))
+        Span::styled(" [ ● TUN: 已开启 ] ", Style::default().fg(Color::Rgb(17, 17, 27)).bg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD))
     } else {
-        Span::styled(" [ ○ TUN 模式: 已关闭 ] ", Style::default().fg(Color::White).bg(Color::DarkGray))
+        Span::styled(" [ ○ TUN: 已关闭 ] ", Style::default().fg(Color::White).bg(Color::Rgb(88, 91, 112)))
     };
 
     let iface_badge = if state.is_tun_interface_up {
-        Span::styled(format!(" [ 网卡: {} (UP) ] ", state.tun_interface_name), Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+        Span::styled(format!(" [ 🌐 {} (UP) ] ", state.tun_interface_name), Style::default().fg(Color::Rgb(17, 17, 27)).bg(Color::Rgb(137, 220, 235)).add_modifier(Modifier::BOLD))
     } else if state.tun_interface_name != "None" {
-        Span::styled(format!(" [ 网卡: {} (DOWN) ] ", state.tun_interface_name), Style::default().fg(Color::Yellow))
+        Span::styled(format!(" [ 🌐 {} (DOWN) ] ", state.tun_interface_name), Style::default().fg(Color::Rgb(249, 226, 175)))
     } else {
-        Span::styled(" [ 网卡: 未创建 ] ", Style::default().fg(Color::DarkGray))
+        Span::styled(" [ 🌐 未创建 ] ", Style::default().fg(Theme::TEXT_MUTED))
     };
 
     let binary_path = crate::core::CoreProcess::find_mihomo_binary()
@@ -65,32 +62,28 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
 
     let tun_card_text = vec![
         Line::from(vec![
-            Span::styled("权限名称: ", Style::default().fg(Color::Cyan)),
-            Span::raw("Linux CAP_NET_ADMIN (TUN 虚拟网卡接口创建与全局路由绑定)"),
+            Span::styled("权限名称: ", Style::default().fg(Color::Rgb(137, 220, 235))),
+            Span::raw("Linux CAP_NET_ADMIN (TUN 虚拟网卡全局路由)"),
         ]),
         Line::from(vec![
-            Span::styled("当前状态: ", Style::default().fg(Color::Cyan)),
+            Span::styled("当前状态: ", Style::default().fg(Color::Rgb(137, 220, 235))),
             auth_badge,
-            Span::raw("   "),
+            Span::raw("  "),
             tun_state_badge,
-            Span::raw("   "),
+            Span::raw("  "),
             iface_badge,
         ]),
         Line::from(vec![
-            Span::styled("核心程序: ", Style::default().fg(Color::Cyan)),
+            Span::styled("核心程序: ", Style::default().fg(Color::Rgb(137, 220, 235))),
             Span::styled(binary_path, Style::default().fg(Color::White)),
-        ]),
-        Line::from(vec![
-            Span::styled("权限说明: ", Style::default().fg(Color::Cyan)),
-            Span::raw("TUN 模式创建 tun0 网卡接管系统 IP 协议栈流量，无需为具体应用单独配置 HTTP/SOCKS 代理。"),
         ]),
         Line::from(vec![]),
         Line::from(vec![
-            Span::styled(" [ 🔑 授权系统 Root 权限 (按 P 键) ] ", Style::default().fg(Color::Black).bg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled(" [ 🔑 授权 Root (按 P 键) ] ", Style::default().fg(Color::Rgb(17, 17, 27)).bg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD)),
             Span::raw("   "),
-            Span::styled(" [ 🚫 撤销系统权限 (按 R 键) ] ", Style::default().fg(Color::White).bg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled(" [ 🚫 撤销权限 (按 R 键) ] ", Style::default().fg(Color::White).bg(Color::Rgb(243, 139, 168)).add_modifier(Modifier::BOLD)),
             Span::raw("   "),
-            Span::styled(" [ ⚡ 切换 TUN 模式 ON/OFF (按 X 键) ] ", Style::default().fg(Color::Black).bg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(" [ ⚡ TUN 开关 (按 X 键) ] ", Style::default().fg(Color::Rgb(17, 17, 27)).bg(Color::Rgb(137, 220, 235)).add_modifier(Modifier::BOLD)),
         ]),
     ];
 
@@ -98,26 +91,22 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .border_style(Style::default().fg(if is_auth { Color::Green } else { Color::Red }))
-            .title(" 1. TUN 虚拟网卡提权与网卡状态 (CAP_NET_ADMIN & Interface) "),
+            .border_style(Style::default().fg(if is_auth { Theme::ACTIVE_GREEN } else { Color::Rgb(243, 139, 168) }))
+            .title(" 1. TUN 虚拟网卡提权 (CAP_NET_ADMIN) "),
     );
     f.render_widget(tun_card, chunks[1]);
 
     // 3. System Proxy GSettings Card
     let sysproxy_card_text = vec![
         Line::from(vec![
-            Span::styled("权限名称: ", Style::default().fg(Color::Cyan)),
+            Span::styled("权限名称: ", Style::default().fg(Color::Rgb(137, 220, 235))),
             Span::raw("GNOME Desktop GSettings 系统代理修改权限"),
             Span::raw("   状态: "),
-            Span::styled(" [ ✔ 正常 READY ] ", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(" [ ✔ READY ] ", Style::default().fg(Color::Rgb(137, 220, 235)).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
-            Span::styled("作用范围: ", Style::default().fg(Color::Cyan)),
-            Span::raw("org.gnome.system.proxy (HTTP/HTTPS/SOCKS 端口控制)"),
-        ]),
-        Line::from(vec![
-            Span::styled("权限说明: ", Style::default().fg(Color::Cyan)),
-            Span::raw("允许按 'p' 开启/关闭桌面系统代理。无需 root 权限，用户态即可控制。"),
+            Span::styled("作用说明: ", Style::default().fg(Color::Rgb(137, 220, 235))),
+            Span::raw("允许按 'p' 开启/关闭桌面系统代理 (HTTP/SOCKS 端口控制)"),
         ]),
     ];
 
@@ -133,19 +122,8 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     // 4. Action & Instructions
     let footer_text = vec![
         Line::from(vec![
-            Span::styled("快捷操作指南:", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
-        ]),
-        Line::from(vec![
-            Span::styled(" • 按 'P' 键: ", Style::default().fg(Color::Green)),
-            Span::raw("触发 Linux Polkit 图形化/终端密码验证窗口，自动为 Mihomo 核心赋予 cap_net_admin 权限"),
-        ]),
-        Line::from(vec![
-            Span::styled(" • 按 'R' 键: ", Style::default().fg(Color::Red)),
-            Span::raw("撤销 Mihomo 核心的 cap_net_admin Capability 权限 (setcap -r)"),
-        ]),
-        Line::from(vec![
-            Span::styled(" • 按 'X' 键: ", Style::default().fg(Color::Cyan)),
-            Span::raw("开启 / 关闭 TUN 虚拟网卡模式 (自动配置 system 协议栈与 auto-route)"),
+            Span::styled(" 快捷按键: ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(" [P] Sudo/Polkit 授权  [R] 撤销 setcap 权限  [X] TUN 开关 ", Style::default().fg(Color::Rgb(205, 214, 244))),
         ]),
     ];
 
@@ -156,7 +134,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded)
                 .border_style(Style::default().fg(Theme::BORDER))
-                .title(" 操作提示 "),
+                .title(" 操作提示 Guide "),
         );
     f.render_widget(footer_p, chunks[3]);
 }

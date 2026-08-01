@@ -21,9 +21,9 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         ])
         .split(area);
 
-    // 1. Top Logo Banner with Rounded Border
+    // 1. Top Logo Header
     let logo_text = vec![Line::from(vec![
-        Span::styled("⚡ MIMO ", Style::default().fg(Theme::BORDER_FOCUS).add_modifier(Modifier::BOLD)),
+        Span::styled(" MIMO ", Style::default().fg(Theme::BORDER_FOCUS).add_modifier(Modifier::BOLD)),
         Span::styled("v0.1.0", Style::default().fg(Theme::TEXT_MUTED)),
     ])];
     let logo_block = Paragraph::new(logo_text)
@@ -36,17 +36,9 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .alignment(ratatui::layout::Alignment::Center);
     f.render_widget(logo_block, chunks[0]);
 
-    // 2. Navigation List
+    // 2. Minimalist Navigation List
     let icons = [
-        "📊 ", // Dashboard
-        "⚡ ", // Proxies
-        "📁 ", // Profiles
-        "📜 ", // Rules
-        "🔗 ", // Connections
-        "📈 ", // Traffic
-        "📝 ", // Logs
-        "⚙️ ", // Settings
-        "🔒 ", // Privileges
+        "📊 ", "⚡ ", "📁 ", "📜 ", "🔗 ", "📈 ", "📝 ", "⚙️ ", "🔒 ",
     ];
 
     let items: Vec<ListItem> = Tab::ALL
@@ -56,16 +48,16 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
             let is_selected = state.active_tab == *tab;
             let icon = icons.get(idx).unwrap_or(&"  ");
             let title = tab.title(lang);
-            let prefix = if is_selected { "▶ " } else { "  " };
+            let indicator = if is_selected { "● " } else { "  " };
 
             let style = if is_selected {
                 Theme::SIDEBAR_SELECTED
             } else {
-                Style::default().fg(Color::White)
+                Style::default().fg(Color::Rgb(205, 214, 244))
             };
 
             let line = Line::from(vec![
-                Span::styled(prefix, if is_selected { Style::default().fg(Color::Rgb(17, 17, 27)) } else { Style::default().fg(Theme::BORDER_FOCUS) }),
+                Span::styled(indicator, if is_selected { Style::default().fg(Color::Rgb(17, 17, 27)) } else { Style::default().fg(Theme::BORDER_FOCUS) }),
                 Span::styled(format!("{} ", icon), style),
                 Span::styled(format!("{:<8}", title.trim()), style),
             ]);
@@ -86,14 +78,14 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded)
                 .border_style(sidebar_border_style)
-                .title(Span::styled(" 菜单 Menu ", Style::default().fg(Theme::TEXT_MUTED))),
+                .title(Span::styled(" 导航 Menu ", Style::default().fg(Theme::TEXT_MUTED))),
         );
 
     let mut state_list = ListState::default();
     state_list.select(Some(state.active_tab as usize));
     f.render_stateful_widget(sidebar_list, chunks[1], &mut state_list);
 
-    // 3. Bottom Active Profile Status Card
+    // 3. Bottom Status Card
     let active_profile = state
         .profiles
         .iter()
