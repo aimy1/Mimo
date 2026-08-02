@@ -131,10 +131,8 @@ enum ProxyCommands {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    unsafe {
-        std::env::set_var("SYSTEMD_ASK_PASSWORD_AGENT", "0");
-        std::env::set_var("POLKIT_AGENT_HELPER_SUPPRESS", "1");
-    }
+    // Prevent Polkit from launching interactive text pkttyagent in TTY, avoiding terminal screen corruption
+    unsafe { std::env::set_var("POLKIT_AGENT_ALLOW_INTERACTIVE", "0"); }
 
     let cli = Cli::parse();
     let mut config = Config::load()?;

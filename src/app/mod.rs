@@ -1083,8 +1083,11 @@ impl App {
             }
 
             Action::ToggleTunMode => {
+                self.state.is_tun_privileged = crate::core::TunMode::check_privilege();
                 if !self.state.is_tun_privileged {
                     let _ = self.action_tx.try_send(Action::ShowTunModal);
+                    let msg = if self.state.settings_lang == "zh" { "⚠️ 开启 TUN 模式需先完成 CAP_NET_ADMIN 权限授权" } else { "⚠️ TUN mode requires CAP_NET_ADMIN capability authorization" };
+                    self.state.push_toast(msg.to_string());
                 } else {
                     let client = self.client.clone();
                     let new_state = !self.state.is_tun_enabled;
@@ -1095,9 +1098,11 @@ impl App {
                         }
                     });
                     if new_state {
-                        self.state.push_toast("TUN 虚拟网卡模式已开启".to_string());
+                        let msg = if self.state.settings_lang == "zh" { "TUN 虚拟网卡模式已开启" } else { "TUN Virtual Adapter Mode Enabled" };
+                        self.state.push_toast(msg.to_string());
                     } else {
-                        self.state.push_toast("TUN 虚拟网卡模式已关闭".to_string());
+                        let msg = if self.state.settings_lang == "zh" { "TUN 虚拟网卡模式已关闭" } else { "TUN Virtual Adapter Mode Disabled" };
+                        self.state.push_toast(msg.to_string());
                     }
                 }
             }
@@ -1128,8 +1133,11 @@ impl App {
                     let client = self.client.clone();
                     let stack = self.state.settings_tun_stack.clone();
                     let is_tun = self.state.is_tun_enabled;
+                    let is_priv = self.state.is_tun_privileged;
                     tokio::spawn(async move {
-                        let _ = client.set_tun_config(is_tun, &stack).await;
+                        if is_priv || !is_tun {
+                            let _ = client.set_tun_config(is_tun, &stack).await;
+                        }
                     });
                     let msg = if cfg.language == "zh" { "配置已成功保存至 ~/.config/mimo/config.toml" } else { "Settings saved to ~/.config/mimo/config.toml" };
                     self.state.push_toast(msg.to_string());
