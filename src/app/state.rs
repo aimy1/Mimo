@@ -144,6 +144,15 @@ pub struct AppState {
     pub log_scroll: usize,
     pub log_filter: String,
 
+    // System Info Metadata
+    pub sys_hostname: String,
+    pub sys_kernel: String,
+    pub sys_cpu_brand: String,
+    pub sys_cpu_cores: usize,
+
+    // Website Connectivity Latencies (Google, GitHub, YouTube, OpenAI, Bilibili, Baidu)
+    pub site_latencies: HashMap<String, Option<u16>>,
+
     // Toast Message
     pub toast: Option<(String, std::time::Instant)>,
 }
@@ -151,6 +160,23 @@ pub struct AppState {
 impl Default for AppState {
     fn default() -> Self {
         let config = Config::load().unwrap_or_default();
+
+        let mut sys = sysinfo::System::new_all();
+        sys.refresh_all();
+
+        let sys_hostname = sysinfo::System::host_name().unwrap_or_else(|| "Linux".into());
+        let sys_kernel = sysinfo::System::kernel_version().unwrap_or_else(|| "Unknown".into());
+        let sys_cpu_brand = sys.cpus().first().map(|c| c.brand().to_string()).unwrap_or_else(|| "x86_64 CPU".into());
+        let sys_cpu_cores = sys.cpus().len();
+
+        let mut site_latencies = HashMap::new();
+        site_latencies.insert("Google".to_string(), Some(120));
+        site_latencies.insert("GitHub".to_string(), Some(95));
+        site_latencies.insert("YouTube".to_string(), Some(110));
+        site_latencies.insert("OpenAI".to_string(), Some(140));
+        site_latencies.insert("Bilibili".to_string(), Some(18));
+        site_latencies.insert("Baidu".to_string(), Some(12));
+
         Self {
             active_tab: Tab::Dashboard,
             focus_zone: FocusZone::Workspace,
@@ -159,6 +185,11 @@ impl Default for AppState {
             cpu_usage: 0.0,
             memory_used_bytes: 0,
             memory_total_bytes: 0,
+            sys_hostname,
+            sys_kernel,
+            sys_cpu_brand,
+            sys_cpu_cores,
+            site_latencies,
             is_searching: false,
             search_query: String::new(),
             rules_resp: None,

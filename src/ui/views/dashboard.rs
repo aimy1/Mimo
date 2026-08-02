@@ -4,7 +4,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, BorderType, Borders, Gauge, Paragraph, Sparkline, Wrap},
+    widgets::{Block, BorderType, Borders, Paragraph, Sparkline, Wrap},
     Frame,
 };
 
@@ -12,19 +12,19 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     let main_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(8), // Top Section: Status Diagnostics (Left) & Running Metrics (Right)
-            Constraint::Length(7), // Middle Section: Realtime Traffic Sparklines
-            Constraint::Length(4), // Bottom Section: System Resource Gauges (CPU, RAM, Conns)
+            Constraint::Length(8), // Top Section: Core Diagnostics (Left) & System Info (Right)
+            Constraint::Length(6), // Middle 1 Section: Site & Service Connectivity Testing
+            Constraint::Length(7), // Middle 2 Section: Realtime Traffic Sparklines
             Constraint::Min(0),    // Footer Navigation Guide
         ])
         .split(area);
 
-    // 1. Top Section: 60% Left Status Diagnostics, 40% Right Running Metrics
+    // 1. Top Section: 50% Left Core Diagnostics, 50% Right System Info
     let top_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
-            Constraint::Percentage(60),
-            Constraint::Percentage(40),
+            Constraint::Percentage(50),
+            Constraint::Percentage(50),
         ])
         .split(main_chunks[0]);
 
@@ -107,50 +107,100 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     );
     f.render_widget(status_block, top_chunks[0]);
 
-    // 1B. Right Running Metrics Card
-    let active_conns_count = state.connections_resp.as_ref().map(|c| c.connections.len()).unwrap_or(0);
-    let rules_count = state.rules_resp.as_ref().map(|r| r.rules.len()).unwrap_or(0);
-    let total_proxies = state.proxies_resp.as_ref().map(|p| p.proxies.len()).unwrap_or(0);
-    let profiles_count = state.profiles.len();
-    let logs_count = state.logs.len();
+    // 1B. Right System Information Card
+    let ram_used = format_bytes(state.memory_used_bytes);
+    let ram_total = format_bytes(state.memory_total_bytes);
+    let ram_percent = if state.memory_total_bytes > 0 {
+        (state.memory_used_bytes as f64 / state.memory_total_bytes as f64 * 100.0) as u8
+    } else {
+        0
+    };
 
-    let metrics_text = vec![
+    let sys_info_text = vec![
         Line::from(vec![
-            Span::styled(" 活跃连接数 Conns  : ", Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled(format!("{} 条", active_conns_count), Style::default().fg(Color::Rgb(250, 179, 135)).add_modifier(Modifier::BOLD)),
+            Span::styled(" 主机名称 Hostname : ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(&state.sys_hostname, Style::default().fg(Color::Rgb(203, 166, 247)).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
-            Span::styled(" 订阅配置数 Sub    : ", Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled(format!("{} 个", profiles_count), Style::default().fg(Color::Rgb(166, 227, 161)).add_modifier(Modifier::BOLD)),
+            Span::styled(" Linux 内核 Kernel: ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(&state.sys_kernel, Style::default().fg(Color::Rgb(137, 220, 235)).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
-            Span::styled(" 代理组/节点 Proxies: ", Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled(format!("{} 个", total_proxies), Style::default().fg(Color::Rgb(137, 220, 235)).add_modifier(Modifier::BOLD)),
+            Span::styled(" 处理器 CPU 架构  : ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(format!("{} ({} 核心)", state.sys_cpu_brand.trim(), state.sys_cpu_cores), Style::default().fg(Color::Rgb(250, 179, 135)).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
-            Span::styled(" 路由规则数 Rules  : ", Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled(format!("{} 条", rules_count), Style::default().fg(Color::Rgb(203, 166, 247)).add_modifier(Modifier::BOLD)),
+            Span::styled(" 物理内存 RAM     : ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(format!("{} / {} ({}%)", ram_used, ram_total, ram_percent), Style::default().fg(Color::Rgb(166, 227, 161)).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
-            Span::styled(" 缓存日志数 Logs   : ", Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled(format!("{} 行", logs_count), Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(" TUN 网卡设备     : ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(format!("{} ({})", state.tun_interface_name, if state.is_tun_interface_up { "UP 活跃" } else { "DOWN 停用" }), Style::default().fg(Theme::TEXT_MUTED)),
         ]),
     ];
 
-    let metrics_block = Paragraph::new(metrics_text).block(
+    let sys_info_block = Paragraph::new(sys_info_text).block(
         Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .border_style(Style::default().fg(Theme::BORDER))
-            .title(" 📊 运行概览 Running Metrics "),
+            .title(" 💻 详细系统环境信息 System Info "),
     );
-    f.render_widget(metrics_block, top_chunks[1]);
+    f.render_widget(sys_info_block, top_chunks[1]);
 
-    // 2. Middle Section: Realtime Traffic Sparklines
+    // 2. Middle 1 Section: Site & Service Connectivity Testing
+    let sites = [
+        ("Google", "https://www.google.com"),
+        ("GitHub", "https://github.com"),
+        ("YouTube", "https://www.youtube.com"),
+        ("OpenAI", "https://chatgpt.com"),
+        ("Bilibili", "https://www.bilibili.com"),
+        ("Baidu", "https://www.baidu.com"),
+    ];
+
+    let site_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage(16),
+            Constraint::Percentage(16),
+            Constraint::Percentage(16),
+            Constraint::Percentage(16),
+            Constraint::Percentage(18),
+            Constraint::Percentage(18),
+        ])
+        .split(main_chunks[1]);
+
+    for (idx, (site_name, url)) in sites.iter().enumerate() {
+        if let Some(target_area) = site_chunks.get(idx) {
+            let lat_opt = state.site_latencies.get(*site_name).copied().flatten();
+            let (status_str, style) = match lat_opt {
+                Some(ms) if ms < 100 => (format!("{} ms [极速]", ms), Style::default().fg(Color::Rgb(166, 227, 161)).add_modifier(Modifier::BOLD)),
+                Some(ms) if ms < 300 => (format!("{} ms [良好]", ms), Style::default().fg(Color::Rgb(137, 220, 235)).add_modifier(Modifier::BOLD)),
+                Some(ms) => (format!("{} ms [一般]", ms), Style::default().fg(Color::Rgb(250, 179, 135)).add_modifier(Modifier::BOLD)),
+                None => ("超时 / Timeout".into(), Style::default().fg(Color::Rgb(243, 139, 168))),
+            };
+
+            let text = vec![
+                Line::from(Span::styled(*site_name, Style::default().fg(Color::Rgb(205, 214, 244)).add_modifier(Modifier::BOLD))),
+                Line::from(Span::styled(url.trim_start_matches("https://"), Style::default().fg(Theme::TEXT_MUTED))),
+                Line::from(Span::styled(status_str, style)),
+            ];
+
+            let card = Paragraph::new(text).block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
+                    .border_style(Style::default().fg(Theme::BORDER)),
+            );
+            f.render_widget(card, *target_area);
+        }
+    }
+
+    // 3. Middle 2 Section: Realtime Traffic Sparklines
     let graph_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-        .split(main_chunks[1]);
+        .split(main_chunks[2]);
 
     let up_data: Vec<u64> = state.up_history.iter().copied().collect();
     let down_data: Vec<u64> = state.down_history.iter().copied().collect();
@@ -183,63 +233,6 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .data(&down_data)
         .style(Style::default().fg(Theme::TRAFFIC_DOWN));
     f.render_widget(down_sparkline, graph_chunks[1]);
-
-    // 3. Bottom Section: Hardware System Metrics Gauges (CPU, RAM, Connections)
-    let hw_chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage(33),
-            Constraint::Percentage(33),
-            Constraint::Percentage(34),
-        ])
-        .split(main_chunks[2]);
-
-    // CPU Gauge
-    let cpu_ratio = (state.cpu_usage as f64 / 100.0).clamp(0.0, 1.0);
-    let cpu_gauge = Gauge::default()
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .border_type(BorderType::Rounded)
-                .border_style(Style::default().fg(Theme::BORDER))
-                .title(format!(" CPU 负载 ({:.1}%) ", state.cpu_usage)),
-        )
-        .gauge_style(Style::default().fg(Color::Rgb(203, 166, 247)).bg(Color::Rgb(30, 30, 46)))
-        .ratio(cpu_ratio);
-    f.render_widget(cpu_gauge, hw_chunks[0]);
-
-    // RAM Gauge
-    let ram_ratio = if state.memory_total_bytes > 0 {
-        (state.memory_used_bytes as f64 / state.memory_total_bytes as f64).clamp(0.0, 1.0)
-    } else {
-        0.0
-    };
-    let ram_text = format!(" RAM 内存 ({}) ", format_bytes(state.memory_used_bytes));
-    let ram_gauge = Gauge::default()
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .border_type(BorderType::Rounded)
-                .border_style(Style::default().fg(Theme::BORDER))
-                .title(ram_text),
-        )
-        .gauge_style(Style::default().fg(Color::Rgb(137, 220, 235)).bg(Color::Rgb(30, 30, 46)))
-        .ratio(ram_ratio);
-    f.render_widget(ram_gauge, hw_chunks[1]);
-
-    // Connection Load Gauge
-    let conn_ratio = (active_conns_count as f64 / 200.0).min(1.0);
-    let conn_gauge = Gauge::default()
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .border_type(BorderType::Rounded)
-                .border_style(Style::default().fg(Theme::BORDER))
-                .title(format!(" 连接负载 ({}) ", active_conns_count)),
-        )
-        .gauge_style(Style::default().fg(Color::Rgb(250, 179, 135)).bg(Color::Rgb(30, 30, 46)))
-        .ratio(conn_ratio);
-    f.render_widget(conn_gauge, hw_chunks[2]);
 
     // 4. Footer Quick Guide
     let quick_info = vec![
