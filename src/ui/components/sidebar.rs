@@ -15,8 +15,8 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(4), // Modern Logo & Author Header Banner
-            Constraint::Min(0),    // Navigation List
+            Constraint::Length(4), // Logo & Author Header Banner
+            Constraint::Min(0),    // Clean Iconless Navigation List
             Constraint::Length(5), // Extended Status Card
         ])
         .split(area);
@@ -24,7 +24,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     // 1. Top Logo & Author Header
     let logo_text = vec![
         Line::from(vec![
-            Span::styled(" ⚡ MIMO ", Style::default().fg(Color::Rgb(203, 166, 247)).add_modifier(Modifier::BOLD)),
+            Span::styled(" MIMO ", Style::default().fg(Color::Rgb(203, 166, 247)).add_modifier(Modifier::BOLD)),
             Span::styled("v0.1.0", Style::default().fg(Theme::TEXT_MUTED)),
         ]),
         Line::from(vec![
@@ -49,17 +49,12 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .alignment(ratatui::layout::Alignment::Center);
     f.render_widget(logo_block, chunks[0]);
 
-    // 2. Optimized Navigation List with Shortcut Badges
-    let icons = [
-        "📊", "⚡", "📁", "🛣️", "🔌", "📈", "📝", "⚙️", "🛡️", "ℹ️",
-    ];
-
+    // 2. Iconless Clean Navigation List with Shortcut Badges
     let items: Vec<ListItem> = Tab::ALL
         .iter()
         .enumerate()
         .map(|(idx, tab)| {
             let is_selected = state.active_tab == *tab;
-            let icon = icons.get(idx).copied().unwrap_or("📌");
             let title = tab.title(lang);
 
             // Shortcut key index badge [1] .. [9], [0]
@@ -92,8 +87,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
             let line = Line::from(vec![
                 Span::styled(indicator, if is_selected { Style::default().fg(Color::Rgb(17, 17, 27)).bg(Color::Rgb(203, 166, 247)) } else { Style::default().fg(Theme::TEXT_MUTED) }),
                 Span::styled(shortcut_str, shortcut_style),
-                Span::styled(format!("{} ", icon), style),
-                Span::styled(format!("{:<8}", title.trim()), style),
+                Span::styled(format!("{:<10}", title.trim()), style),
             ]);
 
             ListItem::new(line).style(style)
@@ -106,7 +100,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded)
                 .border_style(header_border_style)
-                .title(Span::styled(" 导航 Menu [1-9] ", Style::default().fg(Theme::TEXT_MUTED))),
+                .title(Span::styled(" 导航 Menu ", Style::default().fg(Theme::TEXT_MUTED))),
         );
 
     let mut state_list = ListState::default();
