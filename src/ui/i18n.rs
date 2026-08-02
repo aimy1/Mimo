@@ -28,6 +28,7 @@ pub fn t<'a>(key: &'a str, lang: Language) -> &'a str {
             "tab_dashboard" => " 仪表盘 ",
             "tab_proxies" => " 节点选择 ",
             "tab_profiles" => " 订阅配置 ",
+            "tab_rules" => " 规则路由 ",
             "tab_connections" => " 链接管理 ",
             "tab_traffic" => " 流量监控 ",
             "tab_logs" => " 运行日志 ",
@@ -61,6 +62,13 @@ pub fn t<'a>(key: &'a str, lang: Language) -> &'a str {
             "title_connections" => " 活跃连接列表 ['d'/点击断开] ",
             "title_logs" => " 实时内核日志 ",
             "title_settings" => " Mimo 系统设置 ",
+            "title_rules" => " 路由规则过滤列表 ",
+
+            "card_network_services" => " 🌐 网络与代理服务 Network Services ",
+            "card_core_controls" => " ⚡ 核心与系统控制 Core & System Controls ",
+            "card_ui_preferences" => " 🎨 偏好与系统设置 Preferences ",
+            "card_status_diagnostics" => " 🌐 核心与网络出口诊断 Status & Outbound ",
+            "card_running_metrics" => " 📊 运行概览 Running Metrics ",
 
             "footer_nav" => " 切换页面",
             "footer_scroll" => " 导航/滚动",
@@ -88,10 +96,12 @@ pub fn t<'a>(key: &'a str, lang: Language) -> &'a str {
             "tab_dashboard" => " Dashboard ",
             "tab_proxies" => " Proxies ",
             "tab_profiles" => " Profiles ",
+            "tab_rules" => " Rules ",
             "tab_connections" => " Connections ",
             "tab_traffic" => " Traffic ",
             "tab_logs" => " Logs ",
             "tab_settings" => " Settings ",
+            "tab_privileges" => " Privileges ",
             "tab_about" => " About ",
 
             "header_ver" => " Core Version : ",
@@ -120,6 +130,13 @@ pub fn t<'a>(key: &'a str, lang: Language) -> &'a str {
             "title_connections" => " Active Connections ['d'/Click Close] ",
             "title_logs" => " Mihomo Logs Stream ",
             "title_settings" => " Mimo Settings ",
+            "title_rules" => " Routing Rules List ",
+
+            "card_network_services" => " 🌐 Network & Proxy Services ",
+            "card_core_controls" => " ⚡ Core & System Controls ",
+            "card_ui_preferences" => " 🎨 Preferences & Display ",
+            "card_status_diagnostics" => " 🌐 Core & Outbound Diagnostics ",
+            "card_running_metrics" => " 📊 Running Metrics ",
 
             "footer_nav" => " Switch View",
             "footer_scroll" => " Nav/Scroll",
