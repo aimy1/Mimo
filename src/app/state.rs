@@ -310,4 +310,57 @@ impl AppState {
             nodes.into_iter().filter(|n| n.to_lowercase().contains(&q)).collect()
         }
     }
+
+    pub fn display_group_nodes(&self) -> Vec<String> {
+        let mut nodes = self.filtered_group_nodes();
+        if self.sort_nodes_by_latency {
+            nodes.sort_by_key(|n| {
+                let delay = self
+                    .latency_map
+                    .get(n)
+                    .copied()
+                    .flatten()
+                    .or_else(|| {
+                        self.proxies_resp
+                            .as_ref()
+                            .and_then(|r| r.proxies.get(n))
+                            .and_then(|p| p.history.as_ref())
+                            .and_then(|h| h.last())
+                            .and_then(|h| if h.delay > 0 { Some(h.delay) } else { None })
+                    })
+                    .unwrap_or(u16::MAX);
+                delay
+            });
+        }
+        nodes
+    }
+
+    pub fn filtered_sorted_connections(&self) -> Vec<&crate::models::ConnectionItem> {
+        let mut list = Vec::new();
+        if let Some(resp) = &self.connections_resp {
+            let q = self.search_query.to_lowercase();
+            for conn in &resp.connections {
+                let host = conn
+                    .metadata
+                    .host
+                    .as_deref()
+                    .filter(|h| !h.is_empty())
+                    .or(conn.metadata.destination_ip.as_deref())
+                    .unwrap_or("Unknown");
+                let process = conn.metadata.process.as_deref().unwrap_or("-");
+
+                if q.is_empty()
+                    || host.to_lowercase().contains(&q)
+                    || process.to_lowercase().contains(&q)
+                    || conn.metadata.destination_ip.as_deref().unwrap_or("").contains(&q)
+                {
+                    list.push(conn);
+                }
+            }
+            if self.sort_connections_by_traffic {
+                list.sort_by_key(|c| std::cmp::Reverse(c.download + c.upload));
+            }
+        }
+        list
+    }
 }

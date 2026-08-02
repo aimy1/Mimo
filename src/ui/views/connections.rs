@@ -50,32 +50,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .map(|h| ratatui::widgets::Cell::from(*h).style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)));
     let header = Row::new(header_cells).height(1).bottom_margin(1);
 
-    let mut conn_list: Vec<&crate::models::ConnectionItem> = Vec::new();
-    if let Some(resp) = &state.connections_resp {
-        for conn in &resp.connections {
-            let host = conn
-                .metadata
-                .host
-                .as_deref()
-                .filter(|h| !h.is_empty())
-                .or(conn.metadata.destination_ip.as_deref())
-                .unwrap_or("Unknown");
-            let process = conn.metadata.process.as_deref().unwrap_or("-");
-
-            let query = state.search_query.to_lowercase();
-            if query.is_empty()
-                || host.to_lowercase().contains(&query)
-                || process.to_lowercase().contains(&query)
-                || conn.metadata.destination_ip.as_deref().unwrap_or("").contains(&query)
-            {
-                conn_list.push(conn);
-            }
-        }
-    }
-
-    if state.sort_connections_by_traffic {
-        conn_list.sort_by_key(|c| std::cmp::Reverse(c.download + c.upload));
-    }
+    let conn_list = state.filtered_sorted_connections();
 
     let mut rows = Vec::new();
     for conn in &conn_list {
@@ -161,8 +136,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
 
     // Detail Inspector Box
     let mut detail_lines = Vec::new();
-    if let Some(resp) = &state.connections_resp {
-        if let Some(conn) = resp.connections.get(state.selected_conn_idx) {
+    if let Some(conn) = conn_list.get(state.selected_conn_idx) {
             let meta = &conn.metadata;
             let host_ip = format!(
                 "Host: {} ({}:{})",
@@ -198,7 +172,6 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
                 Span::raw(rule_info),
             ]));
         }
-    }
 
     if detail_lines.is_empty() {
         let no_conn_str = match lang {

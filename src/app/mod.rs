@@ -1303,7 +1303,7 @@ impl App {
                     }
                 }
                 ProxySubFocus::Nodes => {
-                    let nodes = self.state.current_group_nodes();
+                    let nodes = self.state.display_group_nodes();
                     let len = nodes.len();
                     if len > 0 {
                         self.state.selected_node_idx = (self.state.selected_node_idx as i32 + delta)
@@ -1328,20 +1328,20 @@ impl App {
                 }
             }
             Tab::Connections => {
-                if let Some(resp) = &self.state.connections_resp {
-                    let len = resp.connections.len();
-                    if len > 0 {
-                        self.state.selected_conn_idx = (self.state.selected_conn_idx as i32 + delta)
-                            .clamp(0, len as i32 - 1) as usize;
-                    }
+                let len = self.state.filtered_sorted_connections().len();
+                if len > 0 {
+                    self.state.selected_conn_idx = (self.state.selected_conn_idx as i32 + delta)
+                        .clamp(0, len as i32 - 1) as usize;
                 }
             }
             Tab::Logs => {
                 let current = self.state.log_scroll as i32;
-                self.state.log_scroll = (current + delta).max(0) as usize;
+                let max_scroll = self.state.logs.len().saturating_sub(1) as i32;
+                self.state.log_scroll = (current + delta).clamp(0, max_scroll.max(0)) as usize;
             }
             Tab::Settings => {
-                self.state.settings_focus = (self.state.settings_focus as i32 + delta).rem_euclid(12) as usize;
+                let current = self.state.settings_focus as i32;
+                self.state.settings_focus = (current + delta).clamp(0, 11) as usize;
             }
             _ => {}
         }
@@ -1370,7 +1370,7 @@ impl App {
                     if len > 0 { self.state.selected_group_idx = len - 1; }
                 }
                 ProxySubFocus::Nodes => {
-                    let len = self.state.current_group_nodes().len();
+                    let len = self.state.display_group_nodes().len();
                     if len > 0 { self.state.selected_node_idx = len - 1; }
                 }
             },
@@ -1385,16 +1385,14 @@ impl App {
                 }
             }
             Tab::Connections => {
-                if let Some(resp) = &self.state.connections_resp {
-                    let len = resp.connections.len();
-                    if len > 0 { self.state.selected_conn_idx = len - 1; }
-                }
+                let len = self.state.filtered_sorted_connections().len();
+                if len > 0 { self.state.selected_conn_idx = len - 1; }
             }
             Tab::Logs => {
                 let len = self.state.logs.len();
                 if len > 0 { self.state.log_scroll = len - 1; }
             }
-            Tab::Settings => self.state.settings_focus = 7,
+            Tab::Settings => self.state.settings_focus = 11,
             _ => {}
         }
     }
@@ -1412,7 +1410,7 @@ impl App {
                     Some(g) => g.to_string(),
                     None => return,
                 };
-                let nodes = self.state.filtered_group_nodes();
+                let nodes = self.state.display_group_nodes();
                 let node = match nodes.get(self.state.selected_node_idx) {
                     Some(n) => n.to_string(),
                     None => return,
@@ -1496,7 +1494,7 @@ impl App {
     }
 
     fn test_single_node_latency(&self) {
-        let nodes = self.state.current_group_nodes();
+        let nodes = self.state.display_group_nodes();
         if let Some(node) = nodes.get(self.state.selected_node_idx) {
             let client = self.client.clone();
             let tx = self.action_tx.clone();
@@ -1554,11 +1552,9 @@ impl App {
     }
 
     async fn close_selected_connection(&mut self) {
-        let id = match &self.state.connections_resp {
-            Some(resp) => match resp.connections.get(self.state.selected_conn_idx) {
-                Some(conn) => conn.id.clone(),
-                None => return,
-            },
+        let conns = self.state.filtered_sorted_connections();
+        let id = match conns.get(self.state.selected_conn_idx) {
+            Some(conn) => conn.id.clone(),
             None => return,
         };
 

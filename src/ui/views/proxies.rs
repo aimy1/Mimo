@@ -74,37 +74,14 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
 
     // 2. Render Right Pane: Node List with Protocol & Latency Pills
     let group_name = state.selected_group_name().unwrap_or("None");
-    let current_nodes = state.current_group_nodes();
+    let display_nodes = state.display_group_nodes();
     let current_selected_now = state
         .proxies_resp
         .as_ref()
         .and_then(|r| r.proxies.get(group_name))
         .and_then(|g| g.now.as_deref());
 
-    // Filter nodes by search query if non-empty
-    let mut filtered_nodes: Vec<&String> = current_nodes
-        .iter()
-        .filter(|n| state.search_query.is_empty() || n.to_lowercase().contains(&state.search_query.to_lowercase()))
-        .collect();
-
-    // Sort nodes by latency if enabled
-    if state.sort_nodes_by_latency {
-        filtered_nodes.sort_by_key(|n| {
-            let delay = state
-                .latency_map
-                .get(*n)
-                .copied()
-                .flatten()
-                .or_else(|| {
-                    state
-                        .proxies_resp
-                        .as_ref()
-                        .and_then(|r| r.proxies.get(*n))
-                        .and_then(|p| p.last_delay())
-                });
-            delay.unwrap_or(u16::MAX)
-        });
-    }
+    let filtered_nodes: Vec<&String> = display_nodes.iter().collect();
 
     let right_chunks = Layout::default()
         .direction(Direction::Vertical)
