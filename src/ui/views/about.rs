@@ -1,4 +1,5 @@
 use crate::app::AppState;
+use crate::ui::i18n::Language;
 use crate::ui::theme::Theme;
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
@@ -9,6 +10,8 @@ use ratatui::{
 };
 
 pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
+    let lang = Language::from_str(&state.settings_lang);
+
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -74,33 +77,38 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .map(|v| format!("v{} (Meta: {})", v.version, v.meta))
         .unwrap_or_else(|| "Offline".into());
 
+    let (label_name, label_author, label_ver, label_core, label_target, label_license, label_repo, title_meta) = match lang {
+        Language::Zh => (" 软件名称 (Name)   : ", " 软件作者 (Author) : ", " 当前版本 (Version): ", " Mihomo 核心版本   : ", " 运行目标 (Target) : ", " 开源协议 (License): ", " 项目仓库 (GitHub) : ", " 📌 项目元数据 Metadata "),
+        Language::En => (" Software Name     : ", " Software Author   : ", " Software Version  : ", " Mihomo Core Ver   : ", " Target Platform   : ", " License           : ", " GitHub Repository : ", " 📌 Project Metadata "),
+    };
+
     let card1_text = vec![
         Line::from(vec![
-            Span::styled(" 软件名称 (Name)   : ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(label_name, Style::default().fg(Theme::TEXT_MUTED)),
             Span::styled("Mimo (Minimalist Mihomo Manager)", Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
-            Span::styled(" 软件作者 (Author) : ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(label_author, Style::default().fg(Theme::TEXT_MUTED)),
             Span::styled("aisaniya", Style::default().fg(Color::Rgb(243, 139, 168)).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
-            Span::styled(" 当前版本 (Version): ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(label_ver, Style::default().fg(Theme::TEXT_MUTED)),
             Span::styled("v0.1.0 (Rust 2021 Edition)", Style::default().fg(Theme::ACTIVE_GREEN)),
         ]),
         Line::from(vec![
-            Span::styled(" Mihomo 核心版本   : ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(label_core, Style::default().fg(Theme::TEXT_MUTED)),
             Span::styled(core_ver, Style::default().fg(Color::Rgb(249, 226, 175))),
         ]),
         Line::from(vec![
-            Span::styled(" 运行目标 (Target) : ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(label_target, Style::default().fg(Theme::TEXT_MUTED)),
             Span::styled("Linux x86_64 (Terminal TUI / CLI)", Style::default().fg(Color::Rgb(137, 220, 235))),
         ]),
         Line::from(vec![
-            Span::styled(" 开源协议 (License): ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(label_license, Style::default().fg(Theme::TEXT_MUTED)),
             Span::styled("MIT License", Style::default().fg(Color::Rgb(203, 166, 247))),
         ]),
         Line::from(vec![
-            Span::styled(" 项目仓库 (GitHub) : ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(label_repo, Style::default().fg(Theme::TEXT_MUTED)),
             Span::styled("https://github.com/aimy1/Mimo", Style::default().fg(Color::Yellow)),
         ]),
     ];
@@ -110,27 +118,32 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .border_style(Style::default().fg(Theme::BORDER))
-            .title(" 📌 项目元数据 Metadata "),
+            .title(title_meta),
     );
     f.render_widget(card1_block, grid_chunks[0]);
 
     // Right Top Card: Tech Stack
+    let (label_lang, label_ui, label_async, label_theme, title_arch) = match lang {
+        Language::Zh => (" 编程语言 : ", " 终端引擎 : ", " 异步运行时: ", " 视觉主题 : ", " 🏗️ 核心架构与技术栈 Architecture "),
+        Language::En => (" Language : ", " TUI Engine: ", " Async Runtime: ", " UI Theme: ", " 🏗️ Architecture & Tech Stack "),
+    };
+
     let card2_text = vec![
         Line::from(vec![
-            Span::styled(" 编程语言 : ", Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled("Rust 1.80+ (高安全 / 低内存 / 零抽象开销)", Style::default().fg(Color::Rgb(250, 179, 135))),
+            Span::styled(label_lang, Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled("Rust 1.80+ (High Performance & Zero-Cost)", Style::default().fg(Color::Rgb(250, 179, 135))),
         ]),
         Line::from(vec![
-            Span::styled(" 终端引擎 : ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(label_ui, Style::default().fg(Theme::TEXT_MUTED)),
             Span::styled("Ratatui v0.29 + Crossterm", Style::default().fg(Color::Rgb(137, 220, 235))),
         ]),
         Line::from(vec![
-            Span::styled(" 异步运行时: ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(label_async, Style::default().fg(Theme::TEXT_MUTED)),
             Span::styled("Tokio + Reqwest + WebSocket Stream", Style::default().fg(Color::Rgb(166, 227, 161))),
         ]),
         Line::from(vec![
-            Span::styled(" 视觉主题 : ", Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled("Catppuccin Morandi Dark Theme Palette", Style::default().fg(Color::Rgb(203, 166, 247))),
+            Span::styled(label_theme, Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled("Catppuccin Morandi Dark Palette", Style::default().fg(Color::Rgb(203, 166, 247))),
         ]),
     ];
 
@@ -139,14 +152,19 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .border_style(Style::default().fg(Theme::BORDER))
-            .title(" 🏗️ 核心架构与技术栈 Architecture "),
+            .title(title_arch),
     );
     f.render_widget(card2_block, right_chunks[0]);
 
     // Right Bottom Card: Credits
+    let (label_thanks, title_credits) = match lang {
+        Language::Zh => (" 特别鸣谢 (Credits):", " 💖 致谢 Acknowledgments "),
+        Language::En => (" Special Thanks (Credits):", " 💖 Acknowledgments "),
+    };
+
     let card3_text = vec![
         Line::from(vec![
-            Span::styled(" 特别鸣谢 (Credits):", Style::default().fg(Color::Rgb(249, 226, 175)).add_modifier(Modifier::BOLD)),
+            Span::styled(label_thanks, Style::default().fg(Color::Rgb(249, 226, 175)).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
             Span::styled(" - Mihomo Team (MetaCubeX/mihomo)", Style::default().fg(Theme::TEXT_MUTED)),
@@ -164,7 +182,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .border_style(Style::default().fg(Theme::BORDER))
-            .title(" 💖 致谢 Acknowledgments "),
+            .title(title_credits),
     );
     f.render_widget(card3_block, right_chunks[1]);
 }

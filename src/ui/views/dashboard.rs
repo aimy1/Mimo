@@ -1,4 +1,5 @@
 use crate::app::AppState;
+use crate::ui::i18n::Language;
 use crate::ui::theme::{format_bytes, format_speed, Theme};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
@@ -9,6 +10,8 @@ use ratatui::{
 };
 
 pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
+    let lang = Language::from_str(&state.settings_lang);
+
     let main_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -48,52 +51,66 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .and_then(|g| g.now.clone())
         .unwrap_or_else(|| "Direct / Unknown".into());
 
+    let (enabled_str, disabled_str, checking_str) = match lang {
+        Language::Zh => ("● 已开启 ON", "○ 已关闭 OFF", "检测中..."),
+        Language::En => ("● ENABLED", "○ DISABLED", "Checking..."),
+    };
+
     let sys_proxy_str = if state.is_sysproxy_enabled {
-        Span::styled("● 已开启 ON", Style::default().fg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD))
+        Span::styled(enabled_str, Style::default().fg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD))
     } else {
-        Span::styled("○ 已关闭 OFF", Style::default().fg(Theme::TEXT_MUTED))
+        Span::styled(disabled_str, Style::default().fg(Theme::TEXT_MUTED))
     };
 
     let tun_str = if state.is_tun_enabled {
-        Span::styled("● 已开启 ON", Style::default().fg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD))
+        Span::styled(enabled_str, Style::default().fg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD))
     } else {
-        Span::styled("○ 已关闭 OFF", Style::default().fg(Theme::TEXT_MUTED))
+        Span::styled(disabled_str, Style::default().fg(Theme::TEXT_MUTED))
     };
 
     let cap_str = if state.is_tun_privileged {
         Span::styled(" (cap_net_admin: OK)", Style::default().fg(Theme::TEXT_MUTED))
     } else {
-        Span::styled(" (需 root/cap_net_admin 权限)", Style::default().fg(Color::Rgb(243, 139, 168)))
+        let req_str = match lang {
+            Language::Zh => " (需 root/cap_net_admin 权限)",
+            Language::En => " (Requires root or cap_net_admin)",
+        };
+        Span::styled(req_str, Style::default().fg(Color::Rgb(243, 139, 168)))
     };
 
     let ip_str = state
         .outbound_ip
         .as_deref()
-        .unwrap_or("检测中 (Checking...)");
+        .unwrap_or(checking_str);
+
+    let (label_ver, label_ip, label_mode, label_sys, label_tun, label_node, title_status) = match lang {
+        Language::Zh => (" 核心版本 Core : ", " 出口公网 IP   : ", " 运行模式 Mode : ", "系统代理: ", " TUN 虚拟网卡  : ", " GLOBAL 节点  : ", " 🌐 核心与网络出口诊断 Status & Outbound "),
+        Language::En => (" Core Version  : ", " Outbound IP   : ", " Mode         : ", "SysProxy: ", " TUN Adapter   : ", " GLOBAL Node   : ", " 🌐 Status & Outbound Diagnostics "),
+    };
 
     let status_text = vec![
         Line::from(vec![
-            Span::styled(" 核心版本 Core : ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(label_ver, Style::default().fg(Theme::TEXT_MUTED)),
             Span::styled(version_str, Style::default().fg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
-            Span::styled(" 出口公网 IP   : ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(label_ip, Style::default().fg(Theme::TEXT_MUTED)),
             Span::styled(ip_str, Style::default().fg(Color::Rgb(249, 226, 175)).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
-            Span::styled(" 运行模式 Mode : ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(label_mode, Style::default().fg(Theme::TEXT_MUTED)),
             Span::styled(mode_str, Style::default().fg(Theme::MODE_BADGE).add_modifier(Modifier::BOLD)),
             Span::raw(" | "),
-            Span::styled("系统代理: ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(label_sys, Style::default().fg(Theme::TEXT_MUTED)),
             sys_proxy_str,
         ]),
         Line::from(vec![
-            Span::styled(" TUN 虚拟网卡  : ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(label_tun, Style::default().fg(Theme::TEXT_MUTED)),
             tun_str,
             cap_str,
         ]),
         Line::from(vec![
-            Span::styled(" GLOBAL 节点  : ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(label_node, Style::default().fg(Theme::TEXT_MUTED)),
             Span::styled(active_node, Style::default().fg(Color::Rgb(137, 220, 235)).add_modifier(Modifier::BOLD)),
         ]),
     ];
@@ -103,7 +120,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .border_style(Style::default().fg(Theme::BORDER))
-            .title(" 🌐 核心与网络出口诊断 Status & Outbound "),
+            .title(title_status),
     );
     f.render_widget(status_block, top_chunks[0]);
 
@@ -116,26 +133,31 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         0
     };
 
+    let (label_host, label_kernel, label_cpu, label_ram, label_device, title_sysinfo, cores_str, active_str, inactive_str) = match lang {
+        Language::Zh => (" 主机名称 Hostname : ", " Linux 内核 Kernel: ", " 处理器 CPU 架构  : ", " 物理内存 RAM     : ", " TUN 网卡设备     : ", " 💻 详细系统环境信息 System Info ", "核心", "UP 活跃", "DOWN 停用"),
+        Language::En => (" Hostname          : ", " Linux Kernel      : ", " CPU Architecture  : ", " Memory RAM        : ", " TUN Device        : ", " 💻 System Information ", "Cores", "UP Active", "DOWN Inactive"),
+    };
+
     let sys_info_text = vec![
         Line::from(vec![
-            Span::styled(" 主机名称 Hostname : ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(label_host, Style::default().fg(Theme::TEXT_MUTED)),
             Span::styled(&state.sys_hostname, Style::default().fg(Color::Rgb(203, 166, 247)).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
-            Span::styled(" Linux 内核 Kernel: ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(label_kernel, Style::default().fg(Theme::TEXT_MUTED)),
             Span::styled(&state.sys_kernel, Style::default().fg(Color::Rgb(137, 220, 235)).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
-            Span::styled(" 处理器 CPU 架构  : ", Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled(format!("{} ({} 核心)", state.sys_cpu_brand.trim(), state.sys_cpu_cores), Style::default().fg(Color::Rgb(250, 179, 135)).add_modifier(Modifier::BOLD)),
+            Span::styled(label_cpu, Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(format!("{} ({} {})", state.sys_cpu_brand.trim(), state.sys_cpu_cores, cores_str), Style::default().fg(Color::Rgb(250, 179, 135)).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
-            Span::styled(" 物理内存 RAM     : ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(label_ram, Style::default().fg(Theme::TEXT_MUTED)),
             Span::styled(format!("{} / {} ({}%)", ram_used, ram_total, ram_percent), Style::default().fg(Color::Rgb(166, 227, 161)).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
-            Span::styled(" TUN 网卡设备     : ", Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled(format!("{} ({})", state.tun_interface_name, if state.is_tun_interface_up { "UP 活跃" } else { "DOWN 停用" }), Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(label_device, Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(format!("{} ({})", state.tun_interface_name, if state.is_tun_interface_up { active_str } else { inactive_str }), Style::default().fg(Theme::TEXT_MUTED)),
         ]),
     ];
 
@@ -144,17 +166,22 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .border_style(Style::default().fg(Theme::BORDER))
-            .title(" 💻 详细系统环境信息 System Info "),
+            .title(title_sysinfo),
     );
     f.render_widget(sys_info_block, top_chunks[1]);
 
     // 2. Middle 1 Section: Beautified Site & Service Connectivity Testing Cards Grid
+    let title_site = match lang {
+        Language::Zh => " 🌐 常用网站与服务连通性测试 Site Connectivity [按 't' 键 / 点击刷新] ",
+        Language::En => " 🌐 Site & Service Connectivity [Press 't' / Click Refresh] ",
+    };
+
     let site_outer_block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(Color::Rgb(203, 166, 247)))
         .title(Span::styled(
-            " 🌐 常用网站与服务连通性测试 Site & Service Connectivity [按 't' 键 / 点击刷新] ",
+            title_site,
             Style::default().fg(Color::Rgb(203, 166, 247)).add_modifier(Modifier::BOLD),
         ));
     f.render_widget(site_outer_block, main_chunks[1]);
@@ -187,14 +214,19 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         ])
         .split(inner_site_area);
 
+    let (fast_str, good_str, normal_str, timeout_str) = match lang {
+        Language::Zh => ("[极速]", "[良好]", "[一般]", "○ 测试中/超时"),
+        Language::En => ("[Fast]", "[Good]", "[Normal]", "○ Timeout"),
+    };
+
     for (idx, (site_name, domain, brand_color)) in sites.iter().enumerate() {
         if let Some(target_area) = site_chunks.get(idx) {
             let lat_opt = state.site_latencies.get(*site_name).copied().flatten();
             let (status_str, style) = match lat_opt {
-                Some(ms) if ms < 100 => (format!("● {} ms [极速]", ms), Style::default().fg(Color::Rgb(166, 227, 161)).add_modifier(Modifier::BOLD)),
-                Some(ms) if ms < 300 => (format!("● {} ms [良好]", ms), Style::default().fg(Color::Rgb(137, 220, 235)).add_modifier(Modifier::BOLD)),
-                Some(ms) => (format!("● {} ms [一般]", ms), Style::default().fg(Color::Rgb(250, 179, 135)).add_modifier(Modifier::BOLD)),
-                None => ("○ 测试中/超时".into(), Style::default().fg(Color::Rgb(243, 139, 168))),
+                Some(ms) if ms < 100 => (format!("● {} ms {}", ms, fast_str), Style::default().fg(Color::Rgb(166, 227, 161)).add_modifier(Modifier::BOLD)),
+                Some(ms) if ms < 300 => (format!("● {} ms {}", ms, good_str), Style::default().fg(Color::Rgb(137, 220, 235)).add_modifier(Modifier::BOLD)),
+                Some(ms) => (format!("● {} ms {}", ms, normal_str), Style::default().fg(Color::Rgb(250, 179, 135)).add_modifier(Modifier::BOLD)),
+                None => (timeout_str.to_string(), Style::default().fg(Color::Rgb(243, 139, 168))),
             };
 
             let text = vec![
@@ -225,7 +257,12 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     let up_max = up_data.iter().max().copied().unwrap_or(0);
     let down_max = down_data.iter().max().copied().unwrap_or(0);
 
-    let up_title = format!(" ▲ 上行 Rate: {} | Peak: {} ", format_speed(state.current_traffic.up), format_speed(up_max));
+    let (label_up, label_down) = match lang {
+        Language::Zh => ("▲ 上行 Rate", "▼ 下行 Rate"),
+        Language::En => ("▲ Upload Rate", "▼ Download Rate"),
+    };
+
+    let up_title = format!(" {}: {} | Peak: {} ", label_up, format_speed(state.current_traffic.up), format_speed(up_max));
     let up_sparkline = Sparkline::default()
         .block(
             Block::default()
@@ -238,7 +275,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .style(Style::default().fg(Theme::TRAFFIC_UP));
     f.render_widget(up_sparkline, graph_chunks[0]);
 
-    let down_title = format!(" ▼ 下行 Rate: {} | Peak: {} ", format_speed(state.current_traffic.down), format_speed(down_max));
+    let down_title = format!(" {}: {} | Peak: {} ", label_down, format_speed(state.current_traffic.down), format_speed(down_max));
     let down_sparkline = Sparkline::default()
         .block(
             Block::default()
@@ -252,10 +289,15 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     f.render_widget(down_sparkline, graph_chunks[1]);
 
     // 4. Footer Quick Guide
+    let (label_guide_title, guide_str) = match lang {
+        Language::Zh => (" 💡 快速提示 Guide ", " [m] 模式切换  [p] 系统代理  [x] TUN模式  [t] 网站/节点测速  [r] 重启核心  [?] 帮助  [1-0] 页面直达 "),
+        Language::En => (" 💡 Quick Guide ", " [m] Mode  [p] SysProxy  [x] TUN  [t] Latency Test  [r] Restart Core  [?] Help  [1-0] Jump Tab "),
+    };
+
     let quick_info = vec![
         Line::from(vec![
-            Span::styled(" 快捷按键 Keybindings: ", Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled(" [m] 模式切换  [p] 系统代理  [x] TUN模式  [t] 网站/节点测速  [r] 重启核心  [?] 帮助  [1-0] 页面直达 ", Style::default().fg(Color::Rgb(205, 214, 244))),
+            Span::styled(" Keybindings: ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(guide_str, Style::default().fg(Color::Rgb(205, 214, 244))),
         ]),
     ];
     let info_block = Paragraph::new(quick_info)
@@ -264,7 +306,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded)
                 .border_style(Style::default().fg(Theme::BORDER))
-                .title(" 💡 快速提示 Guide "),
+                .title(label_guide_title),
         )
         .wrap(Wrap { trim: true });
     f.render_widget(info_block, main_chunks[3]);

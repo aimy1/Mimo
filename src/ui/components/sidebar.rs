@@ -94,13 +94,18 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         })
         .collect();
 
+    let nav_title = match lang {
+        Language::Zh => " 导航 Menu ",
+        Language::En => " Navigation ",
+    };
+
     let sidebar_list = List::new(items)
         .block(
             Block::default()
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded)
                 .border_style(header_border_style)
-                .title(Span::styled(" 导航 Menu ", Style::default().fg(Theme::TEXT_MUTED))),
+                .title(Span::styled(nav_title, Style::default().fg(Theme::TEXT_MUTED))),
         );
 
     let mut state_list = ListState::default();
@@ -127,21 +132,26 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .and_then(|c| c.mode.clone())
         .unwrap_or_else(|| "Rule".into());
 
+    let (label_sub, label_mode, label_outbound, title_status, checking_str) = match lang {
+        Language::Zh => (" 订阅: ", " 模式: ", " 出口: ", " 状态 Status ", "检测中..."),
+        Language::En => (" Sub : ", " Mode: ", " Out : ", " Status ", "Checking..."),
+    };
+
     let card_text = vec![
         Line::from(vec![
-            Span::styled(" 订阅: ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(label_sub, Style::default().fg(Theme::TEXT_MUTED)),
             Span::styled(active_profile, Style::default().fg(Color::Rgb(137, 220, 235)).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
-            Span::styled(" 模式: ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(label_mode, Style::default().fg(Theme::TEXT_MUTED)),
             Span::styled(mode_str, Style::default().fg(Theme::MODE_BADGE).add_modifier(Modifier::BOLD)),
             Span::raw(" | "),
             tun_status_span,
         ]),
         Line::from(vec![
-            Span::styled(" 出口: ", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(label_outbound, Style::default().fg(Theme::TEXT_MUTED)),
             Span::styled(
-                state.outbound_ip.as_deref().unwrap_or("检测中..."),
+                state.outbound_ip.as_deref().unwrap_or(checking_str),
                 Style::default().fg(Color::Rgb(249, 226, 175)),
             ),
         ]),
@@ -153,7 +163,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded)
                 .border_style(Style::default().fg(Theme::BORDER))
-                .title(Span::styled(" 状态 Status ", Style::default().fg(Theme::TEXT_MUTED))),
+                .title(Span::styled(title_status, Style::default().fg(Theme::TEXT_MUTED))),
         );
     f.render_widget(card_block, chunks[2]);
 }
