@@ -131,6 +131,11 @@ enum ProxyCommands {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    unsafe {
+        std::env::set_var("SYSTEMD_ASK_PASSWORD_AGENT", "0");
+        std::env::set_var("POLKIT_AGENT_HELPER_SUPPRESS", "1");
+    }
+
     let cli = Cli::parse();
     let mut config = Config::load()?;
 
