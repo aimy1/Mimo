@@ -20,11 +20,23 @@ pub struct Settings {
     pub allow_lan: bool,
     #[serde(default = "default_true")]
     pub ipv6: bool,
+    #[serde(default = "default_dns_mode")]
+    pub dns_mode: String,
+    #[serde(default = "default_false")]
+    pub auto_sysproxy: bool,
+    #[serde(default = "default_sub_update_hours")]
+    pub sub_update_hours: u32,
+    #[serde(default = "default_ui_theme")]
+    pub ui_theme: String,
 }
 
 fn default_tun_stack() -> String { "system".to_string() }
 fn default_log_level() -> String { "info".to_string() }
+fn default_dns_mode() -> String { "fake-ip".to_string() }
+fn default_ui_theme() -> String { "Catppuccin".to_string() }
+fn default_sub_update_hours() -> u32 { 12 }
 fn default_true() -> bool { true }
+fn default_false() -> bool { false }
 
 impl Default for Settings {
     fn default() -> Self {
@@ -40,6 +52,10 @@ impl Default for Settings {
             log_level: "info".to_string(),
             allow_lan: true,
             ipv6: true,
+            dns_mode: "fake-ip".to_string(),
+            auto_sysproxy: false,
+            sub_update_hours: 12,
+            ui_theme: "Catppuccin".to_string(),
         }
     }
 }

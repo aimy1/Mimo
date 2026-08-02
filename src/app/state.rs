@@ -91,7 +91,11 @@ pub struct AppState {
     pub settings_log_level: String,
     pub settings_allow_lan: bool,
     pub settings_ipv6: bool,
-    pub settings_focus: usize, // 0..=11 index
+    pub settings_dns_mode: String,
+    pub settings_auto_sysproxy: bool,
+    pub settings_sub_update_hours: u32,
+    pub settings_ui_theme: String,
+    pub settings_focus: usize, // 0..=15 index
 
     // API Data
     pub version: Option<VersionInfo>,
@@ -205,6 +209,10 @@ impl Default for AppState {
             settings_log_level: config.log_level.clone(),
             settings_allow_lan: config.allow_lan,
             settings_ipv6: config.ipv6,
+            settings_dns_mode: config.dns_mode.clone(),
+            settings_auto_sysproxy: config.auto_sysproxy,
+            settings_sub_update_hours: config.sub_update_hours,
+            settings_ui_theme: config.ui_theme.clone(),
             settings_focus: 0,
             version: None,
             config: None,

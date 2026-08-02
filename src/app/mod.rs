@@ -418,25 +418,25 @@ impl App {
                             // Specialized Input Handling for Settings View
                             if self.state.active_tab == Tab::Settings {
                                 match key.code {
-                                    KeyCode::Up | KeyCode::Char('k') => self.state.settings_focus = if self.state.settings_focus == 0 { 11 } else { self.state.settings_focus - 1 },
-                                    KeyCode::Down | KeyCode::Char('j') => self.state.settings_focus = (self.state.settings_focus + 1) % 12,
+                                    KeyCode::Up | KeyCode::Char('k') => self.state.settings_focus = if self.state.settings_focus == 0 { 15 } else { self.state.settings_focus - 1 },
+                                    KeyCode::Down | KeyCode::Char('j') => self.state.settings_focus = (self.state.settings_focus + 1) % 16,
                                     KeyCode::Left | KeyCode::Char('h') => {
-                                        if self.state.settings_focus >= 5 && self.state.settings_focus <= 10 {
-                                            self.state.settings_focus -= 5;
+                                        if self.state.settings_focus >= 8 && self.state.settings_focus <= 14 {
+                                            self.state.settings_focus -= 8;
                                         } else {
                                             self.state.focus_zone = FocusZone::Sidebar;
                                         }
                                     }
                                     KeyCode::Right | KeyCode::Char('l') => {
-                                        if self.state.settings_focus < 5 {
-                                            self.state.settings_focus += 5;
+                                        if self.state.settings_focus <= 6 {
+                                            self.state.settings_focus += 8;
                                         }
                                     }
                                     KeyCode::Enter => {
-                                        if self.state.settings_focus == 11 {
+                                        if self.state.settings_focus == 15 {
                                             let _ = self.action_tx.try_send(Action::SaveSettings);
                                         } else {
-                                            self.state.settings_focus = (self.state.settings_focus + 1) % 12;
+                                            self.state.settings_focus = (self.state.settings_focus + 1) % 16;
                                         }
                                     }
                                     KeyCode::Char(' ') => {
@@ -444,27 +444,41 @@ impl App {
                                             0 => self.state.settings_api_url.push(' '),
                                             1 => self.state.settings_secret.push(' '),
                                             4 => self.state.settings_test_url.push(' '),
-                                            5 => self.state.settings_tun_stack = match self.state.settings_tun_stack.as_str() {
+                                            5 => self.state.settings_dns_mode = if self.state.settings_dns_mode == "fake-ip" { "redir-host".into() } else { "fake-ip".into() },
+                                            6 => self.state.settings_auto_sysproxy = !self.state.settings_auto_sysproxy,
+                                            7 => self.state.settings_sub_update_hours = match self.state.settings_sub_update_hours {
+                                                0 => 6,
+                                                6 => 12,
+                                                12 => 24,
+                                                _ => 0,
+                                            },
+                                            8 => self.state.settings_tun_stack = match self.state.settings_tun_stack.as_str() {
                                                 "system" => "gvisor".into(),
                                                 "gvisor" => "lwip".into(),
                                                 _ => "system".into(),
                                             },
-                                            6 => self.state.settings_log_level = match self.state.settings_log_level.as_str() {
+                                            9 => self.state.settings_log_level = match self.state.settings_log_level.as_str() {
                                                 "info" => "warning".into(),
                                                 "warning" => "error".into(),
                                                 "error" => "debug".into(),
                                                 "debug" => "silent".into(),
                                                 _ => "info".into(),
                                             },
-                                            7 => self.state.settings_allow_lan = !self.state.settings_allow_lan,
-                                            8 => self.state.settings_ipv6 = !self.state.settings_ipv6,
-                                            9 => self.state.settings_lang = if self.state.settings_lang == "zh" { "en".into() } else { "zh".into() },
-                                            10 => self.state.settings_refresh_ms = match self.state.settings_refresh_ms {
+                                            10 => self.state.settings_allow_lan = !self.state.settings_allow_lan,
+                                            11 => self.state.settings_ipv6 = !self.state.settings_ipv6,
+                                            12 => self.state.settings_lang = if self.state.settings_lang == "zh" { "en".into() } else { "zh".into() },
+                                            13 => self.state.settings_ui_theme = match self.state.settings_ui_theme.as_str() {
+                                                "Catppuccin" => "Nord".into(),
+                                                "Nord" => "TokyoNight".into(),
+                                                "TokyoNight" => "Gruvbox".into(),
+                                                _ => "Catppuccin".into(),
+                                            },
+                                            14 => self.state.settings_refresh_ms = match self.state.settings_refresh_ms {
                                                 500 => 1000,
                                                 1000 => 2000,
                                                 _ => 500,
                                             },
-                                            11 => { let _ = self.action_tx.try_send(Action::SaveSettings); }
+                                            15 => { let _ = self.action_tx.try_send(Action::SaveSettings); }
                                             _ => {}
                                         }
                                     }
@@ -507,8 +521,8 @@ impl App {
                                         },
                                         4 => self.state.settings_test_url.push(c),
                                         _ => match c {
-                                            'k' => self.state.settings_focus = if self.state.settings_focus == 0 { 11 } else { self.state.settings_focus - 1 },
-                                            'j' => self.state.settings_focus = (self.state.settings_focus + 1) % 12,
+                                            'k' => self.state.settings_focus = if self.state.settings_focus == 0 { 15 } else { self.state.settings_focus - 1 },
+                                            'j' => self.state.settings_focus = (self.state.settings_focus + 1) % 16,
                                             _ => {}
                                         },
                                     },
@@ -1105,6 +1119,10 @@ impl App {
                 cfg.log_level = self.state.settings_log_level.clone();
                 cfg.allow_lan = self.state.settings_allow_lan;
                 cfg.ipv6 = self.state.settings_ipv6;
+                cfg.dns_mode = self.state.settings_dns_mode.clone();
+                cfg.auto_sysproxy = self.state.settings_auto_sysproxy;
+                cfg.sub_update_hours = self.state.settings_sub_update_hours;
+                cfg.ui_theme = self.state.settings_ui_theme.clone();
 
                 if cfg.save().is_ok() {
                     let client = self.client.clone();
