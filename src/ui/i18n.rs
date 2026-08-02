@@ -64,9 +64,10 @@ pub fn t<'a>(key: &'a str, lang: Language) -> &'a str {
             "title_settings" => " Mimo 系统设置 ",
             "title_rules" => " 路由规则过滤列表 ",
 
-            "card_network_services" => " 🌐 网络与代理服务 Network Services ",
-            "card_core_controls" => " ⚡ 核心与系统控制 Core & System Controls ",
-            "card_ui_preferences" => " 🎨 偏好与系统设置 Preferences ",
+            "card_network_services" => " 🌐 网络与代理服务 Network & Proxy Services ",
+            "card_dns_automation" => " 🛡️ DNS 与自动化服务 DNS & Automation ",
+            "card_core_controls" => " ⚡ 核心与高级服务 Core & System Controls ",
+            "card_ui_preferences" => " 🎨 界面与偏好风格 Preferences & Display ",
             "card_status_diagnostics" => " 🌐 核心与网络出口诊断 Status & Outbound ",
             "card_running_metrics" => " 📊 运行概览 Running Metrics ",
 
@@ -88,6 +89,10 @@ pub fn t<'a>(key: &'a str, lang: Language) -> &'a str {
             "settings_http_port" => "系统代理 HTTP 端口",
             "settings_socks_port" => "系统代理 SOCKS 端口",
             "settings_test_url" => "延迟测试 URL",
+            "settings_dns_mode" => "DNS 解析模式 (fake-ip / redir-host)",
+            "settings_auto_sysproxy" => "启动时自动开代理 (ON / OFF)",
+            "settings_sub_update" => "订阅自动更新周期 (小时)",
+            "settings_ui_theme" => "界面配色主题 Preset",
             "settings_save_btn" => " [按 Enter / 点击保存配置到 ~/.config/mimo/config.toml] ",
 
             _ => key,
@@ -133,6 +138,7 @@ pub fn t<'a>(key: &'a str, lang: Language) -> &'a str {
             "title_rules" => " Routing Rules List ",
 
             "card_network_services" => " 🌐 Network & Proxy Services ",
+            "card_dns_automation" => " 🛡️ DNS & Automation ",
             "card_core_controls" => " ⚡ Core & System Controls ",
             "card_ui_preferences" => " 🎨 Preferences & Display ",
             "card_status_diagnostics" => " 🌐 Core & Outbound Diagnostics ",
@@ -156,6 +162,10 @@ pub fn t<'a>(key: &'a str, lang: Language) -> &'a str {
             "settings_http_port" => "System Proxy HTTP Port",
             "settings_socks_port" => "System Proxy SOCKS Port",
             "settings_test_url" => "Latency Test URL",
+            "settings_dns_mode" => "DNS Enhanced Mode",
+            "settings_auto_sysproxy" => "Launch Auto SysProxy",
+            "settings_sub_update" => "Sub Auto-Update Interval (Hours)",
+            "settings_ui_theme" => "UI Theme Preset",
             "settings_save_btn" => " [Press Enter / Click to Save to ~/.config/mimo/config.toml] ",
 
             _ => key,
