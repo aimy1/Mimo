@@ -25,7 +25,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     let logo_text = vec![
         Line::from(vec![
             Span::styled(" MIMO ", Style::default().fg(Color::Rgb(203, 166, 247)).add_modifier(Modifier::BOLD)),
-            Span::styled("v0.1.0", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled("v0.2.0", Style::default().fg(Theme::TEXT_MUTED)),
         ]),
         Line::from(vec![
             Span::styled(" by ", Style::default().fg(Theme::TEXT_MUTED)),
