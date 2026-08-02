@@ -75,7 +75,7 @@ impl TunMode {
 
     /// Detect active TUN interface status (e.g. tun0, utun, mihomo) on Linux
     pub fn get_interface_info() -> (String, bool) {
-        let candidate_ifaces = ["tun0", "mihomo", "utun", "clash"];
+        let candidate_ifaces = ["Meta", "meta", "tun0", "mihomo", "utun", "clash"];
         
         for iface in candidate_ifaces {
             let sys_path = format!("/sys/class/net/{}", iface);
@@ -91,11 +91,12 @@ impl TunMode {
             }
         }
 
-        // Search any interface starting with tun
+        // Search any interface starting with tun or meta or clash
         if let Ok(entries) = fs::read_dir("/sys/class/net/") {
             for entry in entries.flatten() {
                 let name = entry.file_name().to_string_lossy().to_string();
-                if name.starts_with("tun") {
+                let lower = name.to_lowercase();
+                if lower.starts_with("tun") || lower.starts_with("meta") || lower.starts_with("clash") {
                     return (name, true);
                 }
             }
