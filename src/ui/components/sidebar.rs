@@ -24,7 +24,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     // 1. Top Logo & Author Header
     let logo_text = vec![
         Line::from(vec![
-            Span::styled(" ⚡ MIMO ", Style::default().fg(Color::Rgb(203, 166, 247)).add_modifier(Modifier::BOLD)),
+            Span::styled(" MIMO ", Style::default().fg(Color::Rgb(203, 166, 247)).add_modifier(Modifier::BOLD)),
             Span::styled("v0.1.0", Style::default().fg(Theme::TEXT_MUTED)),
         ]),
         Line::from(vec![
@@ -49,9 +49,9 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .alignment(ratatui::layout::Alignment::Center);
     f.render_widget(logo_block, chunks[0]);
 
-    // 2. Optimized Navigation List with Shortcut Badges
+    // 2. Navigation List - ONLY Proxies (节点选择) keeps icon ⚡
     let icons = [
-        "📊", "⚡", "📁", "🛣️", "🔌", "📈", "📝", "⚙️", "🛡️", "ℹ️",
+        "", "⚡ ", "", "", "", "", "", "", "", "",
     ];
 
     let items: Vec<ListItem> = Tab::ALL
@@ -92,7 +92,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
             let line = Line::from(vec![
                 Span::styled(indicator, if is_selected { Style::default().fg(Color::Rgb(17, 17, 27)).bg(Color::Rgb(203, 166, 247)) } else { Style::default().fg(Theme::TEXT_MUTED) }),
                 Span::styled(shortcut_str, shortcut_style),
-                Span::styled(format!("{} ", icon), style),
+                Span::styled(icon.to_string(), style),
                 Span::styled(format!("{:<8}", title.trim()), style),
             ]);
 
