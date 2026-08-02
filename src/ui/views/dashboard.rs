@@ -13,7 +13,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(8), // Top Section: Core Diagnostics (Left) & System Info (Right)
-            Constraint::Length(6), // Middle 1 Section: Site & Service Connectivity Testing
+            Constraint::Length(7), // Middle 1 Section: Beautified Site & Service Connectivity Testing
             Constraint::Length(7), // Middle 2 Section: Realtime Traffic Sparklines
             Constraint::Min(0),    // Footer Navigation Guide
         ])
@@ -148,12 +148,15 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     );
     f.render_widget(sys_info_block, top_chunks[1]);
 
-    // 2. Middle 1 Section: Site & Service Connectivity Testing
+    // 2. Middle 1 Section: Beautified Site & Service Connectivity Testing Cards Grid
     let site_outer_block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
-        .border_style(Style::default().fg(Theme::BORDER))
-        .title(" 🌐 常用网站连通性测试 Site Connectivity [按 't' 键 / 点击刷新] ");
+        .border_style(Style::default().fg(Color::Rgb(203, 166, 247)))
+        .title(Span::styled(
+            " 🌐 常用网站与服务连通性测试 Site & Service Connectivity [按 't' 键 / 点击刷新] ",
+            Style::default().fg(Color::Rgb(203, 166, 247)).add_modifier(Modifier::BOLD),
+        ));
     f.render_widget(site_outer_block, main_chunks[1]);
 
     let inner_site_area = Rect {
@@ -164,12 +167,12 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     };
 
     let sites = [
-        ("Google", "https://www.google.com"),
-        ("GitHub", "https://github.com"),
-        ("YouTube", "https://www.youtube.com"),
-        ("OpenAI", "https://chatgpt.com"),
-        ("Bilibili", "https://www.bilibili.com"),
-        ("Baidu", "https://www.baidu.com"),
+        ("Google", "google.com", Color::Rgb(137, 180, 250)),
+        ("GitHub", "github.com", Color::Rgb(205, 214, 244)),
+        ("YouTube", "youtube.com", Color::Rgb(243, 139, 168)),
+        ("OpenAI", "chatgpt.com", Color::Rgb(148, 226, 213)),
+        ("Bilibili", "bilibili.com", Color::Rgb(245, 194, 231)),
+        ("Baidu", "baidu.com", Color::Rgb(166, 227, 161)),
     ];
 
     let site_chunks = Layout::default()
@@ -184,26 +187,28 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         ])
         .split(inner_site_area);
 
-    for (idx, (site_name, url)) in sites.iter().enumerate() {
+    for (idx, (site_name, domain, brand_color)) in sites.iter().enumerate() {
         if let Some(target_area) = site_chunks.get(idx) {
             let lat_opt = state.site_latencies.get(*site_name).copied().flatten();
             let (status_str, style) = match lat_opt {
-                Some(ms) if ms < 100 => (format!("{} ms [极速]", ms), Style::default().fg(Color::Rgb(166, 227, 161)).add_modifier(Modifier::BOLD)),
-                Some(ms) if ms < 300 => (format!("{} ms [良好]", ms), Style::default().fg(Color::Rgb(137, 220, 235)).add_modifier(Modifier::BOLD)),
-                Some(ms) => (format!("{} ms [一般]", ms), Style::default().fg(Color::Rgb(250, 179, 135)).add_modifier(Modifier::BOLD)),
-                None => ("测试中/超时".into(), Style::default().fg(Color::Rgb(243, 139, 168))),
+                Some(ms) if ms < 100 => (format!("● {} ms [极速]", ms), Style::default().fg(Color::Rgb(166, 227, 161)).add_modifier(Modifier::BOLD)),
+                Some(ms) if ms < 300 => (format!("● {} ms [良好]", ms), Style::default().fg(Color::Rgb(137, 220, 235)).add_modifier(Modifier::BOLD)),
+                Some(ms) => (format!("● {} ms [一般]", ms), Style::default().fg(Color::Rgb(250, 179, 135)).add_modifier(Modifier::BOLD)),
+                None => ("○ 测试中/超时".into(), Style::default().fg(Color::Rgb(243, 139, 168))),
             };
 
             let text = vec![
-                Line::from(vec![
-                    Span::styled(*site_name, Style::default().fg(Color::Rgb(205, 214, 244)).add_modifier(Modifier::BOLD)),
-                    Span::raw(" "),
-                    Span::styled(status_str, style),
-                ]),
-                Line::from(Span::styled(url.trim_start_matches("https://"), Style::default().fg(Theme::TEXT_MUTED))),
+                Line::from(Span::styled(*site_name, Style::default().fg(*brand_color).add_modifier(Modifier::BOLD))),
+                Line::from(Span::styled(*domain, Style::default().fg(Theme::TEXT_MUTED))),
+                Line::from(Span::styled(status_str, style)),
             ];
 
-            let card = Paragraph::new(text);
+            let card = Paragraph::new(text).block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
+                    .border_style(Style::default().fg(Theme::BORDER)),
+            );
             f.render_widget(card, *target_area);
         }
     }
