@@ -20,11 +20,10 @@ pub async fn stream_traffic(
     while let Some(msg) = read.next().await {
         match msg {
             Ok(Message::Text(text)) => {
-                if let Ok(traffic) = serde_json::from_str::<TrafficMessage>(&text) {
-                    if tx.send(traffic).await.is_err() {
+                if let Ok(traffic) = serde_json::from_str::<TrafficMessage>(&text)
+                    && tx.send(traffic).await.is_err() {
                         break; // Receiver dropped
                     }
-                }
             }
             Ok(Message::Close(_)) => break,
             Err(_) => break,
@@ -52,11 +51,10 @@ pub async fn stream_logs(
     while let Some(msg) = read.next().await {
         match msg {
             Ok(Message::Text(text)) => {
-                if let Ok(log_entry) = serde_json::from_str::<LogMessage>(&text) {
-                    if tx.send(log_entry).await.is_err() {
+                if let Ok(log_entry) = serde_json::from_str::<LogMessage>(&text)
+                    && tx.send(log_entry).await.is_err() {
                         break; // Receiver dropped
                     }
-                }
             }
             Ok(Message::Close(_)) => break,
             Err(_) => break,
@@ -77,12 +75,11 @@ fn convert_to_ws_url(base_url: &str, path: &str, secret: Option<&str>) -> String
     }
 
     let mut full_path = path.to_string();
-    if let Some(sec) = secret {
-        if !sec.trim().is_empty() {
+    if let Some(sec) = secret
+        && !sec.trim().is_empty() {
             let separator = if full_path.contains('?') { "&" } else { "?" };
             full_path = format!("{}{}{}{}", full_path, separator, "token=", urlencoding::encode(sec));
         }
-    }
 
     format!("{}{}", ws_base, full_path)
 }

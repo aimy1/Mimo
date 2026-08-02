@@ -81,12 +81,11 @@ impl ProfileManager {
                 match client.get(url_or_path).send().await {
                     Ok(resp) => {
                         if resp.status().is_success() {
-                            if let Ok(text) = resp.text().await {
-                                if !text.contains("406 Not Acceptable") && !text.contains("<title>406") {
+                            if let Ok(text) = resp.text().await
+                                && !text.contains("406 Not Acceptable") && !text.contains("<title>406") {
                                     fetched_body = Some(text);
                                     break;
                                 }
-                            }
                         } else {
                             last_err = format!("HTTP {}", resp.status());
                         }

@@ -260,11 +260,10 @@ impl AppState {
     }
 
     pub fn check_toast_expiration(&mut self) {
-        if let Some((_, created_at)) = &self.toast {
-            if created_at.elapsed() > std::time::Duration::from_secs(4) {
+        if let Some((_, created_at)) = &self.toast
+            && created_at.elapsed() > std::time::Duration::from_secs(4) {
                 self.toast = None;
             }
-        }
     }
 
     pub fn selected_group_name(&self) -> Option<&str> {
@@ -277,15 +276,12 @@ impl AppState {
             None => return Vec::new(),
         };
 
-        if let Some(resp) = &self.proxies_resp {
-            if let Some(group_item) = resp.proxies.get(group_name) {
-                if let Some(all) = &group_item.all {
-                    if !all.is_empty() {
+        if let Some(resp) = &self.proxies_resp
+            && let Some(group_item) = resp.proxies.get(group_name)
+                && let Some(all) = &group_item.all
+                    && !all.is_empty() {
                         return all.clone();
                     }
-                }
-            }
-        }
 
         // Fallback to parsed active profile YAML
         if let Some(parsed) = &self.parsed_active_profile {
@@ -315,7 +311,8 @@ impl AppState {
         let mut nodes = self.filtered_group_nodes();
         if self.sort_nodes_by_latency {
             nodes.sort_by_key(|n| {
-                let delay = self
+                
+                self
                     .latency_map
                     .get(n)
                     .copied()
@@ -328,8 +325,7 @@ impl AppState {
                             .and_then(|h| h.last())
                             .and_then(|h| if h.delay > 0 { Some(h.delay) } else { None })
                     })
-                    .unwrap_or(u16::MAX);
-                delay
+                    .unwrap_or(u16::MAX)
             });
         }
         nodes

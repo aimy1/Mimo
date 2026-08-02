@@ -2,16 +2,13 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[allow(dead_code)]
+#[derive(Default)]
 pub enum Language {
+    #[default]
     Zh,
     En,
 }
 
-impl Default for Language {
-    fn default() -> Self {
-        Language::Zh
-    }
-}
 
 impl Language {
     pub fn from_str(s: &str) -> Self {
@@ -22,7 +19,7 @@ impl Language {
     }
 }
 
-pub fn t<'a>(key: &'a str, lang: Language) -> &'a str {
+pub fn t(key: &str, lang: Language) -> &str {
     match lang {
         Language::Zh => match key {
             "tab_dashboard" => " 仪表盘 ",

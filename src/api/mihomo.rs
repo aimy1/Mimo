@@ -14,15 +14,14 @@ pub struct MihomoClient {
 impl MihomoClient {
     pub fn new(base_url: &str, secret: Option<String>) -> Result<Self> {
         let mut headers = HeaderMap::new();
-        if let Some(ref sec) = secret {
-            if !sec.trim().is_empty() {
+        if let Some(ref sec) = secret
+            && !sec.trim().is_empty() {
                 let auth_val = format!("Bearer {}", sec.trim());
                 headers.insert(
                     AUTHORIZATION,
                     HeaderValue::from_str(&auth_val).context("Invalid secret for header")?,
                 );
             }
-        }
 
         let client = Client::builder()
             .default_headers(headers)

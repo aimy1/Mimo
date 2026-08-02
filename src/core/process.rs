@@ -122,12 +122,11 @@ impl CoreProcess {
             info!("Sent SIGKILL to Mihomo PID {}", pid);
         }
 
-        if let Ok(mut guard) = CHILD_PROCESS.lock() {
-            if let Some(mut child) = guard.take() {
+        if let Ok(mut guard) = CHILD_PROCESS.lock()
+            && let Some(mut child) = guard.take() {
                 let _ = child.kill();
                 let _ = child.wait();
             }
-        }
 
         if Self::is_systemd_active() {
             let _ = StdCommand::new("systemctl").args(["stop", "mihomo"]).output();
@@ -146,23 +145,21 @@ impl CoreProcess {
             return Self::start_with_config(&path).map(|_| ());
         }
 
-        if let Ok(profiles) = crate::profile::ProfileManager::list_profiles() {
-            if let Some(active) = profiles.into_iter().find(|p| p.is_active) {
+        if let Ok(profiles) = crate::profile::ProfileManager::list_profiles()
+            && let Some(active) = profiles.into_iter().find(|p| p.is_active) {
                 let _ = Self::stop();
                 std::thread::sleep(std::time::Duration::from_millis(300));
                 return Self::start_with_config(&active.file_path).map(|_| ());
             }
-        }
 
         let output = StdCommand::new("systemctl")
             .args(["restart", "mihomo"])
             .output();
 
-        if let Ok(out) = output {
-            if out.status.success() {
+        if let Ok(out) = output
+            && out.status.success() {
                 return Ok(());
             }
-        }
 
         bail!("Failed to restart Mihomo Core process")
     }

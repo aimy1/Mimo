@@ -83,11 +83,10 @@ impl App {
                 maybe_event = reader.next() => {
                     match maybe_event {
                         Some(Ok(CrosstermEvent::Key(key))) => {
-                            if key.kind == crossterm::event::KeyEventKind::Press {
-                                if self.action_tx.send(Action::Key(key)).await.is_err() {
+                            if key.kind == crossterm::event::KeyEventKind::Press
+                                && self.action_tx.send(Action::Key(key)).await.is_err() {
                                     break;
                                 }
-                            }
                         }
                         Some(Ok(CrosstermEvent::Mouse(mouse))) => {
                             if self.action_tx.send(Action::Mouse(mouse)).await.is_err() {
@@ -608,12 +607,11 @@ impl App {
                                     self.state.show_profile_input = true;
                                 }
                                 KeyCode::Char('u') | KeyCode::Char('U') if self.state.active_tab == Tab::Profiles => {
-                                    if let Some(p) = self.state.profiles.get(self.state.selected_profile_idx) {
-                                        if let Some(url) = p.url.clone() {
+                                    if let Some(p) = self.state.profiles.get(self.state.selected_profile_idx)
+                                        && let Some(url) = p.url.clone() {
                                             let name = p.name.clone();
                                             let _ = self.action_tx.try_send(Action::AddProfile { name, url });
                                         }
-                                    }
                                 }
                                 KeyCode::Char('d') | KeyCode::Char('D') => {
                                     if self.state.active_tab == Tab::Proxies {
@@ -648,8 +646,8 @@ impl App {
             Action::Mouse(mouse) => {
                 use crossterm::event::{MouseButton, MouseEventKind};
                 if self.state.show_tun_modal {
-                    if let MouseEventKind::Down(MouseButton::Left) = mouse.kind {
-                        if !self.state.is_granting_privilege {
+                    if let MouseEventKind::Down(MouseButton::Left) = mouse.kind
+                        && !self.state.is_granting_privilege {
                             if !self.state.tun_password_input.is_empty() {
                                 let pass = self.state.tun_password_input.clone();
                                 let _ = self.action_tx.try_send(Action::GrantTunPrivilegeWithPassword(pass));
@@ -657,7 +655,6 @@ impl App {
                                 self.state.tun_input_focus = 0;
                             }
                         }
-                    }
                     return Ok(false);
                 }
                 match mouse.kind {
@@ -669,7 +666,7 @@ impl App {
 
                         // 1. Click on Left Sidebar Navigation Bar (Column < 18)
                         if col < 18 {
-                            if row >= 4 && row <= 14 {
+                            if (4..=14).contains(&row) {
                                 let tab_idx = (row - 5) as usize;
                                 if let Some(tab) = Tab::ALL.get(tab_idx) {
                                     self.state.active_tab = *tab;
@@ -679,11 +676,11 @@ impl App {
                         }
                         // 2. Click on Top Control Pills Bar (Row <= 2, Column >= 18)
                         else if row <= 2 {
-                            if col >= 18 && col < 42 {
+                            if (18..42).contains(&col) {
                                 self.cycle_mode();
-                            } else if col >= 42 && col < 66 {
+                            } else if (42..66).contains(&col) {
                                 let _ = self.action_tx.try_send(Action::ToggleSystemProxy);
-                            } else if col >= 66 && col < 84 {
+                            } else if (66..84).contains(&col) {
                                 let _ = self.action_tx.try_send(Action::ToggleTunMode);
                             } else if col >= 84 {
                                 let _ = self.action_tx.try_send(Action::RestartCore);
@@ -694,31 +691,31 @@ impl App {
                             self.state.focus_zone = FocusZone::Workspace;
 
                             if self.state.active_tab == Tab::Dashboard {
-                                if row >= 10 && row <= 16 {
+                                if (10..=16).contains(&row) {
                                     self.test_all_sites_latency();
                                 }
                             } else if self.state.active_tab == Tab::Settings {
                                 if col < 55 {
-                                    if row >= 4 && row <= 6 {
+                                    if (4..=6).contains(&row) {
                                         self.state.settings_focus = 0;
-                                    } else if row >= 7 && row <= 9 {
+                                    } else if (7..=9).contains(&row) {
                                         self.state.settings_focus = 1;
-                                    } else if row >= 10 && row <= 12 {
+                                    } else if (10..=12).contains(&row) {
                                         self.state.settings_focus = 2;
-                                    } else if row >= 13 && row <= 15 {
+                                    } else if (13..=15).contains(&row) {
                                         self.state.settings_focus = 3;
                                     } else if row >= 16 {
                                         self.state.settings_focus = 4;
                                     }
                                 } else {
-                                    if row >= 4 && row <= 6 {
+                                    if (4..=6).contains(&row) {
                                         self.state.settings_focus = 5;
                                         self.state.settings_tun_stack = match self.state.settings_tun_stack.as_str() {
                                             "system" => "gvisor".into(),
                                             "gvisor" => "lwip".into(),
                                             _ => "system".into(),
                                         };
-                                    } else if row >= 7 && row <= 9 {
+                                    } else if (7..=9).contains(&row) {
                                         self.state.settings_focus = 6;
                                         self.state.settings_log_level = match self.state.settings_log_level.as_str() {
                                             "info" => "warning".into(),
@@ -727,16 +724,16 @@ impl App {
                                             "debug" => "silent".into(),
                                             _ => "info".into(),
                                         };
-                                    } else if row >= 10 && row <= 12 {
+                                    } else if (10..=12).contains(&row) {
                                         self.state.settings_focus = 7;
                                         self.state.settings_allow_lan = !self.state.settings_allow_lan;
-                                    } else if row >= 13 && row <= 15 {
+                                    } else if (13..=15).contains(&row) {
                                         self.state.settings_focus = 8;
                                         self.state.settings_ipv6 = !self.state.settings_ipv6;
-                                    } else if row >= 16 && row <= 18 {
+                                    } else if (16..=18).contains(&row) {
                                         self.state.settings_focus = 9;
                                         self.state.settings_lang = if self.state.settings_lang == "zh" { "en".into() } else { "zh".into() };
-                                    } else if row >= 19 && row <= 21 {
+                                    } else if (19..=21).contains(&row) {
                                         self.state.settings_focus = 10;
                                         self.state.settings_refresh_ms = match self.state.settings_refresh_ms {
                                             500 => 1000,
@@ -750,24 +747,22 @@ impl App {
                                 }
                             } else if self.state.active_tab == Tab::Profiles {
                                 if row <= 5 {
-                                    if col >= 18 && col < 35 {
+                                    if (18..35).contains(&col) {
                                         self.state.profile_name_input.clear();
                                         self.state.profile_url_input.clear();
                                         self.state.profile_input_focus = 0;
                                         self.state.show_profile_input = true;
-                                    } else if col >= 35 && col < 52 {
-                                        if let Some(p) = self.state.profiles.get(self.state.selected_profile_idx) {
-                                            if let Some(url) = p.url.clone() {
+                                    } else if (35..52).contains(&col) {
+                                        if let Some(p) = self.state.profiles.get(self.state.selected_profile_idx)
+                                            && let Some(url) = p.url.clone() {
                                                 let name = p.name.clone();
                                                 let _ = self.action_tx.try_send(Action::AddProfile { name, url });
                                             }
-                                        }
-                                    } else if col >= 52 && col < 68 {
-                                        if let Some(p) = self.state.profiles.get(self.state.selected_profile_idx) {
+                                    } else if (52..68).contains(&col)
+                                        && let Some(p) = self.state.profiles.get(self.state.selected_profile_idx) {
                                             let name = p.name.clone();
                                             let _ = self.action_tx.try_send(Action::DeleteProfile(name));
                                         }
-                                    }
                                 } else {
                                     let click_idx = (row - 5) as usize;
                                     if click_idx < self.state.profiles.len() {
@@ -799,22 +794,19 @@ impl App {
                             } else if self.state.active_tab == Tab::Rules {
                                 if row >= 4 {
                                     let click_idx = (row - 4) as usize;
-                                    if let Some(resp) = &self.state.rules_resp {
-                                        if click_idx < resp.rules.len() {
+                                    if let Some(resp) = &self.state.rules_resp
+                                        && click_idx < resp.rules.len() {
                                             self.state.selected_rule_idx = click_idx;
                                         }
-                                    }
                                 }
-                            } else if self.state.active_tab == Tab::Connections {
-                                if row >= 4 {
+                            } else if self.state.active_tab == Tab::Connections
+                                && row >= 4 {
                                     let click_idx = (row - 4) as usize;
-                                    if let Some(resp) = &self.state.connections_resp {
-                                        if click_idx < resp.connections.len() {
+                                    if let Some(resp) = &self.state.connections_resp
+                                        && click_idx < resp.connections.len() {
                                             self.state.selected_conn_idx = click_idx;
                                         }
-                                    }
                                 }
-                            }
                         }
                     }
                     _ => {}
@@ -853,11 +845,10 @@ impl App {
             Action::RulesFetched(res) => match res {
                 Ok(resp) => {
                     self.state.rules_resp = Some(resp);
-                    if let Some(r) = &self.state.rules_resp {
-                        if !r.rules.is_empty() && self.state.selected_rule_idx >= r.rules.len() {
+                    if let Some(r) = &self.state.rules_resp
+                        && !r.rules.is_empty() && self.state.selected_rule_idx >= r.rules.len() {
                             self.state.selected_rule_idx = r.rules.len() - 1;
                         }
-                    }
                 }
                 Err(e) => self.state.status_error = Some(e),
             },
@@ -869,9 +860,9 @@ impl App {
                         self.state.selected_profile_idx = self.state.profiles.len() - 1;
                     }
 
-                    if let Some(active) = self.state.profiles.iter().find(|p| p.is_active).or_else(|| self.state.profiles.first()) {
-                        if let Ok(content) = std::fs::read_to_string(&active.file_path) {
-                            if let Ok(parsed) = crate::profile::ProfileParser::parse_yaml(&content) {
+                    if let Some(active) = self.state.profiles.iter().find(|p| p.is_active).or_else(|| self.state.profiles.first())
+                        && let Ok(content) = std::fs::read_to_string(&active.file_path)
+                            && let Ok(parsed) = crate::profile::ProfileParser::parse_yaml(&content) {
                                 // Auto adapt MihomoClient API URL if external_controller is defined
                                 if let Some(ext_ctrl) = &parsed.external_controller {
                                     let formatted_url = if ext_ctrl.starts_with("http://") || ext_ctrl.starts_with("https://") {
@@ -901,8 +892,6 @@ impl App {
                                     let _ = crate::core::CoreProcess::start_with_config(&active.file_path);
                                 }
                             }
-                        }
-                    }
                 }
                 Err(e) => self.state.push_toast(format!("Profile Error: {}", e)),
             },
@@ -1267,11 +1256,10 @@ impl App {
             Action::ConnectionsFetched(res) => match res {
                 Ok(resp) => {
                     self.state.connections_resp = Some(resp);
-                    if let Some(resp) = &self.state.connections_resp {
-                        if !resp.connections.is_empty() && self.state.selected_conn_idx >= resp.connections.len() {
+                    if let Some(resp) = &self.state.connections_resp
+                        && !resp.connections.is_empty() && self.state.selected_conn_idx >= resp.connections.len() {
                             self.state.selected_conn_idx = resp.connections.len() - 1;
                         }
-                    }
                 }
                 Err(e) => self.state.status_error = Some(e),
             },

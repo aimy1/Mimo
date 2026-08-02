@@ -213,11 +213,10 @@ pub async fn handle_proxy_list(client: &MihomoClient, group_filter: Option<&str>
     for key in keys {
         let proxy = &resp.proxies[key];
 
-        if let Some(filter) = group_filter {
-            if !proxy.name.eq_ignore_ascii_case(filter) {
+        if let Some(filter) = group_filter
+            && !proxy.name.eq_ignore_ascii_case(filter) {
                 continue;
             }
-        }
 
         let delay_str = match proxy.last_delay() {
             Some(ms) if ms < 200 => format!("\x1b[32m{} ms\x1b[0m", ms),
@@ -255,8 +254,8 @@ pub async fn handle_latency(client: &MihomoClient, node: Option<&str>) -> Result
         println!("Testing delay for active proxy groups...");
         let resp = client.get_proxies().await?;
         for (name, proxy) in resp.proxies {
-            if proxy.proxy_type == "Selector" || proxy.proxy_type == "URLTest" {
-                if let Some(nodes) = &proxy.all {
+            if (proxy.proxy_type == "Selector" || proxy.proxy_type == "URLTest")
+                && let Some(nodes) = &proxy.all {
                     println!("\x1b[1;33mGroup: {}\x1b[0m", name);
                     for node_name in nodes {
                         match client.test_delay(node_name, None, Some(2000)).await {
@@ -265,7 +264,6 @@ pub async fn handle_latency(client: &MihomoClient, node: Option<&str>) -> Result
                         }
                     }
                 }
-            }
         }
     }
     Ok(())

@@ -24,14 +24,13 @@ impl TunMode {
         }
 
         // 2. Check if cap_net_admin capability is present on the Mihomo binary
-        if let Some(binary) = crate::core::CoreProcess::find_mihomo_binary() {
-            if let Ok(output) = Command::new("getcap").arg(&binary).output() {
+        if let Some(binary) = crate::core::CoreProcess::find_mihomo_binary()
+            && let Ok(output) = Command::new("getcap").arg(&binary).output() {
                 let text = String::from_utf8_lossy(&output.stdout);
                 if text.contains("cap_net_admin") {
                     return true;
                 }
             }
-        }
 
         false
     }
@@ -191,11 +190,9 @@ impl TunMode {
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .status()
-        {
-            if status.success() && Self::check_privilege() {
+            && status.success() && Self::check_privilege() {
                 return Ok(());
             }
-        }
 
         bail!("Failed to obtain privileges via Linux Polkit GUI")
     }
@@ -219,11 +216,9 @@ impl TunMode {
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .status()
-        {
-            if status.success() || !Self::check_privilege() {
+            && (status.success() || !Self::check_privilege()) {
                 return Ok(());
             }
-        }
 
         if let Ok(output) = Command::new("sudo")
             .args(["-n", "setcap", "-r", &binary_str])
@@ -231,11 +226,9 @@ impl TunMode {
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .output()
-        {
-            if output.status.success() || !Self::check_privilege() {
+            && (output.status.success() || !Self::check_privilege()) {
                 return Ok(());
             }
-        }
 
         bail!("Failed to revoke privileges via non-interactive Polkit/Sudo")
     }
@@ -259,11 +252,9 @@ impl TunMode {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()
-        {
-            if output.status.success() && Self::check_privilege() {
+            && output.status.success() && Self::check_privilege() {
                 return Ok(());
             }
-        }
 
         bail!("Non-interactive privilege escalation failed")
     }

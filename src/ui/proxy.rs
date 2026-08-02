@@ -36,16 +36,14 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .map(|name| {
             let mut line_spans = vec![Span::raw(format!(" {} ", name))];
 
-            if let Some(resp) = &state.proxies_resp {
-                if let Some(item) = resp.proxies.get(name) {
-                    if let Some(now) = &item.now {
+            if let Some(resp) = &state.proxies_resp
+                && let Some(item) = resp.proxies.get(name)
+                    && let Some(now) = &item.now {
                         line_spans.push(Span::styled(
                             format!(" → {}", now),
                             Style::default().fg(Theme::TEXT_MUTED),
                         ));
                     }
-                }
-            }
 
             ListItem::new(Line::from(line_spans))
         })
