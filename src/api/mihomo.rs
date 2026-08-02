@@ -110,14 +110,22 @@ impl MihomoClient {
 
     /// PATCH /configs tun mode with specific stack (system, gvisor, lwip)
     pub async fn set_tun_config(&self, enable: bool, stack: &str) -> Result<()> {
-        let payload = serde_json::json!({
-            "tun": {
-                "enable": enable,
-                "stack": stack,
-                "auto-route": true,
-                "auto-detect-interface": true
-            }
-        });
+        let payload = if enable {
+            serde_json::json!({
+                "tun": {
+                    "enable": true,
+                    "stack": stack,
+                    "auto-route": true,
+                    "auto-detect-interface": true
+                }
+            })
+        } else {
+            serde_json::json!({
+                "tun": {
+                    "enable": false
+                }
+            })
+        };
         self.client
             .patch(format!("{}/configs", self.base_url))
             .json(&payload)

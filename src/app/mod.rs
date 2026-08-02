@@ -103,6 +103,9 @@ impl App {
                 }
                 action = self.action_rx.recv() => {
                     if let Some(action) = action {
+                        if matches!(action, Action::ClearScreen) {
+                            let _ = terminal.clear();
+                        }
                         let should_quit = self.update(action).await?;
                         if should_quit {
                             break;
@@ -213,9 +216,13 @@ impl App {
             }
 
             Action::Key(key) => {
-                // Layer 0: Global Application Quit
+                // Layer 0: Global Application Quit & Screen Refresh
                 if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c') {
                     return Ok(true);
+                }
+                if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('l') {
+                    let _ = self.action_tx.try_send(Action::ClearScreen);
+                    return Ok(false);
                 }
 
                 // Layer 1: Active Input Modal Processing (Search Bar or Subscription Input)
@@ -1037,6 +1044,7 @@ impl App {
             Action::TunPrivilegeResult(res) => {
                 self.state.is_granting_privilege = false;
                 self.state.tun_password_input.clear();
+                let _ = self.action_tx.try_send(Action::ClearScreen);
                 match res {
                     Ok(_) => {
                         self.state.is_tun_privileged = crate::core::TunMode::check_privilege();
@@ -1047,6 +1055,9 @@ impl App {
                             let client = self.client.clone();
                             let tx = self.action_tx.clone();
                             tokio::spawn(async move {
+                                // Restart Mihomo process so the child re-executes and inherits the new CAP_NET_ADMIN capability
+                                let _ = crate::core::CoreProcess::restart();
+                                tokio::time::sleep(std::time::Duration::from_millis(600)).await;
                                 if client.set_tun_enabled(true).await.is_ok() {
                                     let _ = tx.send(Action::FetchConfig).await;
                                 }
@@ -1083,6 +1094,7 @@ impl App {
             }
 
             Action::ToggleTunMode => {
+                let _ = self.action_tx.try_send(Action::ClearScreen);
                 self.state.is_tun_privileged = crate::core::TunMode::check_privilege();
                 if !self.state.is_tun_privileged {
                     let _ = self.action_tx.try_send(Action::ShowTunModal);

@@ -70,4 +70,5 @@ pub enum Action {
     ClearLogs,
     SetLogFilter(String),
     ToggleHelp,
+    ClearScreen,
 }
