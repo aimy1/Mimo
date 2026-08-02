@@ -1019,12 +1019,22 @@ impl App {
 
             Action::GrantTunPrivilegeWithPassword(password) => {
                 self.state.is_granting_privilege = true;
-                self.state.push_toast("🔐 正在验证 Sudo 密码并开启 CAP_NET_ADMIN 权限...".to_string());
+                let is_priv = self.state.is_tun_privileged;
+                if is_priv {
+                    self.state.push_toast("🔐 正在验证 Sudo 密码并撤销 CAP_NET_ADMIN 权限...".to_string());
+                } else {
+                    self.state.push_toast("🔐 正在验证 Sudo 密码并开启 CAP_NET_ADMIN 权限...".to_string());
+                }
 
                 let tx = self.action_tx.clone();
                 tokio::task::spawn_blocking(move || {
-                    let res = crate::core::TunMode::grant_privilege_with_password(&password)
-                        .map_err(|e| e.to_string());
+                    let res = if is_priv {
+                        crate::core::TunMode::revoke_privilege_with_password(&password)
+                            .map_err(|e| e.to_string())
+                    } else {
+                        crate::core::TunMode::grant_privilege_with_password(&password)
+                            .map_err(|e| e.to_string())
+                    };
                     let _ = tx.blocking_send(Action::TunPrivilegeResult(res));
                 });
             }
@@ -1055,7 +1065,6 @@ impl App {
                             let client = self.client.clone();
                             let tx = self.action_tx.clone();
                             tokio::spawn(async move {
-                                // Restart Mihomo process so the child re-executes and inherits the new CAP_NET_ADMIN capability
                                 let _ = crate::core::CoreProcess::restart();
                                 tokio::time::sleep(std::time::Duration::from_millis(600)).await;
                                 if client.set_tun_enabled(true).await.is_ok() {
@@ -1063,11 +1072,21 @@ impl App {
                                 }
                             });
                         } else {
-                            self.state.push_toast("⚠️ 提权成功但未检测到 CAP_NET_ADMIN 权限".to_string());
+                            self.state.show_tun_modal = false;
+                            self.state.is_tun_enabled = false;
+                            self.state.push_toast("🚫 已成功撤销 CAP_NET_ADMIN 系统权限".to_string());
+
+                            let client = self.client.clone();
+                            let tx = self.action_tx.clone();
+                            tokio::spawn(async move {
+                                let _ = client.set_tun_enabled(false).await;
+                                let _ = crate::core::CoreProcess::restart();
+                                let _ = tx.send(Action::FetchConfig).await;
+                            });
                         }
                     }
                     Err(err) => {
-                        self.state.push_toast(format!("❌ 提权失败: {}", err));
+                        self.state.push_toast(format!("❌ 操作失败: {}", err));
                     }
                 }
             }
@@ -1082,13 +1101,41 @@ impl App {
             }
 
             Action::RevokeTunPrivilegeResult(res) => {
+                let _ = self.action_tx.try_send(Action::ClearScreen);
                 match res {
                     Ok(_) => {
                         self.state.is_tun_privileged = crate::core::TunMode::check_privilege();
-                        self.state.push_toast("已成功撤销 CAP_NET_ADMIN 系统权限".to_string());
+                        if !self.state.is_tun_privileged {
+                            self.state.is_tun_enabled = false;
+                            self.state.push_toast("🚫 已成功撤销 CAP_NET_ADMIN 系统权限".to_string());
+                            let client = self.client.clone();
+                            let tx = self.action_tx.clone();
+                            tokio::spawn(async move {
+                                let _ = client.set_tun_enabled(false).await;
+                                let _ = crate::core::CoreProcess::restart();
+                                let _ = tx.send(Action::FetchConfig).await;
+                            });
+                        } else {
+                            self.state.push_toast("已成功撤销 CAP_NET_ADMIN 系统权限".to_string());
+                        }
                     }
-                    Err(err) => {
-                        self.state.push_toast(format!("❌ 撤销权限失败: {}", err));
+                    Err(_) => {
+                        self.state.is_tun_privileged = crate::core::TunMode::check_privilege();
+                        if !self.state.is_tun_privileged {
+                            self.state.is_tun_enabled = false;
+                            self.state.push_toast("🚫 已成功撤销 CAP_NET_ADMIN 系统权限".to_string());
+                            let client = self.client.clone();
+                            let tx = self.action_tx.clone();
+                            tokio::spawn(async move {
+                                let _ = client.set_tun_enabled(false).await;
+                                let _ = crate::core::CoreProcess::restart();
+                                let _ = tx.send(Action::FetchConfig).await;
+                            });
+                        } else {
+                            // Non-interactive Polkit GUI / Sudo failed: pop up password modal!
+                            self.state.show_tun_modal = true;
+                            self.state.push_toast("⚠️ 请输入 Sudo 密码以完成权限撤销".to_string());
+                        }
                     }
                 }
             }

@@ -140,6 +140,41 @@ impl TunMode {
         }
     }
 
+    /// Revoke TUN capability via password passed to sudo -S
+    pub fn revoke_privilege_with_password(password: &str) -> Result<()> {
+        let binary = match crate::core::CoreProcess::find_mihomo_binary() {
+            Some(b) => b,
+            None => bail!("Mihomo binary not found to revoke privileges"),
+        };
+
+        let binary_str = binary.to_string_lossy().to_string();
+
+        let mut child = Command::new("sudo")
+            .args(["-S", "setcap", "-r", &binary_str])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()?;
+
+        if let Some(mut stdin) = child.stdin.take() {
+            let _ = stdin.write_all(password.as_bytes());
+            let _ = stdin.write_all(b"\n");
+        }
+
+        let output = child.wait_with_output()?;
+        if output.status.success() || !Self::check_privilege() {
+            return Ok(());
+        }
+
+        let err_msg = String::from_utf8_lossy(&output.stderr);
+        let msg = err_msg.trim();
+        if msg.is_empty() {
+            bail!("System authorization failed. Please check your password.")
+        } else {
+            bail!("Authorization error: {}", msg)
+        }
+    }
+
     /// Grant TUN capability via Polkit GUI (pkexec --disable-internal-agent without TTY fallback)
     pub fn grant_privilege_pkexec() -> Result<()> {
         let binary = match crate::core::CoreProcess::find_mihomo_binary() {
@@ -167,6 +202,10 @@ impl TunMode {
 
     /// Revoke TUN capability from Mihomo binary (`setcap -r`)
     pub fn revoke_privilege() -> Result<()> {
+        if !Self::check_privilege() {
+            return Ok(()); // Already revoked
+        }
+
         let binary = match crate::core::CoreProcess::find_mihomo_binary() {
             Some(b) => b,
             None => bail!("Mihomo binary not found to revoke privileges"),
@@ -181,23 +220,24 @@ impl TunMode {
             .stderr(Stdio::null())
             .status()
         {
-            if status.success() {
+            if status.success() || !Self::check_privilege() {
                 return Ok(());
             }
         }
 
-        let output = Command::new("sudo")
+        if let Ok(output) = Command::new("sudo")
             .args(["-n", "setcap", "-r", &binary_str])
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
-            .output()?;
-
-        if output.status.success() {
-            Ok(())
-        } else {
-            bail!("Failed to revoke privileges")
+            .output()
+        {
+            if output.status.success() || !Self::check_privilege() {
+                return Ok(());
+            }
         }
+
+        bail!("Failed to revoke privileges via non-interactive Polkit/Sudo")
     }
 
     /// Try non-interactive privilege escalation (e.g. Polkit GUI or passwordless sudo)
