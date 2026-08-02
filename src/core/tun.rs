@@ -114,7 +114,7 @@ impl TunMode {
         let binary_str = binary.to_string_lossy().to_string();
 
         let mut child = Command::new("sudo")
-            .args(["-S", "setcap", "cap_net_admin+ep", &binary_str])
+            .args(["-S", "setcap", "cap_net_admin,cap_net_bind_service+ep", &binary_str])
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -127,6 +127,21 @@ impl TunMode {
 
         let output = child.wait_with_output()?;
         if output.status.success() && Self::check_privilege() {
+            // Also attempt to install polkit rule for resolve1 if polkit directory exists
+            let polkit_cmd = "test -d /etc/polkit-1/rules.d && echo 'polkit.addRule(function(action, subject) { if (action.id.indexOf(\"org.freedesktop.resolve1.\") === 0) { return polkit.Result.YES; } });' > /etc/polkit-1/rules.d/99-mimo-resolve1.rules || true";
+            let mut polkit_child = Command::new("sudo")
+                .args(["-S", "sh", "-c", polkit_cmd])
+                .stdin(Stdio::piped())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn();
+            if let Ok(ref mut pc) = polkit_child {
+                if let Some(mut stdin) = pc.stdin.take() {
+                    let _ = stdin.write_all(password.as_bytes());
+                    let _ = stdin.write_all(b"\n");
+                }
+                let _ = pc.wait();
+            }
             return Ok(());
         }
 

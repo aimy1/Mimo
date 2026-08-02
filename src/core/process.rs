@@ -122,15 +122,33 @@ impl CoreProcess {
             info!("Sent SIGKILL to Mihomo PID {}", pid);
         }
 
-        if let Ok(mut guard) = CHILD_PROCESS.lock()
-            && let Some(mut child) = guard.take() {
+        if let Ok(mut guard) = CHILD_PROCESS.lock() {
+            if let Some(mut child) = guard.take() {
                 let _ = child.kill();
                 let _ = child.wait();
             }
+        }
+
+        // Kill any orphan/external mihomo or clash-meta process running on system to free port 9090
+        let _ = StdCommand::new("pkill")
+            .args(["-9", "-f", "mihomo"])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .output();
+
+        let _ = StdCommand::new("pkill")
+            .args(["-9", "-f", "clash-meta"])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .output();
 
         if Self::is_systemd_active() {
             let _ = StdCommand::new("systemctl").args(["stop", "mihomo"]).output();
         }
+
+        std::thread::sleep(std::time::Duration::from_millis(300));
 
         Ok(())
     }
