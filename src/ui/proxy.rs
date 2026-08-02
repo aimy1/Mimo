@@ -1,4 +1,5 @@
 use crate::app::AppState;
+use crate::ui::i18n::Language;
 use crate::ui::theme::Theme;
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
@@ -9,6 +10,8 @@ use ratatui::{
 };
 
 pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
+    let lang = Language::from_str(&state.settings_lang);
+
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(30), Constraint::Percentage(70)])
@@ -48,13 +51,18 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         })
         .collect();
 
+    let groups_title = match lang {
+        Language::Zh => " 代理分组 Proxy Groups ",
+        Language::En => " Proxy Groups ",
+    };
+
     let groups_list = List::new(group_items)
         .block(
             Block::default()
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded)
                 .border_style(groups_border_style)
-                .title(" 代理分组 Groups "),
+                .title(groups_title),
         )
         .highlight_style(Theme::SIDEBAR_SELECTED);
 
@@ -89,6 +97,10 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
 
     // Render Search Bar if active
     if state.is_searching {
+        let search_title = match lang {
+            Language::Zh => " 节点搜索 Search Nodes ",
+            Language::En => " Search Nodes ",
+        };
         let search_text = format!(" 🔍 Search: {}_", state.search_query);
         let search_block = Paragraph::new(search_text)
             .block(
@@ -96,10 +108,15 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
                     .borders(Borders::ALL)
                     .border_type(BorderType::Rounded)
                     .border_style(Style::default().fg(Color::Yellow))
-                    .title(" 节点搜索 Search Nodes "),
+                    .title(search_title),
             );
         f.render_widget(search_block, right_chunks[0]);
     }
+
+    let info_card_str = match lang {
+        Language::Zh => " [提示卡片] ",
+        Language::En => " [Info Card] ",
+    };
 
     let node_items: Vec<ListItem> = filtered_nodes
         .iter()
@@ -154,7 +171,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
                 });
 
             let latency_span = if is_info_card {
-                Span::styled(" [提示卡片] ", Style::default().fg(Color::DarkGray))
+                Span::styled(info_card_str, Style::default().fg(Color::DarkGray))
             } else {
                 match delay_opt {
                     Some(ms) if ms < 200 => Span::styled(
@@ -192,11 +209,18 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         })
         .collect();
 
-    let title_str = format!(
-        " 节点列表 Nodes in '{}' [{} 节点] [Enter:切换节点 | 't':测速 | 's':搜索] ",
-        group_name,
-        filtered_nodes.len()
-    );
+    let title_str = match lang {
+        Language::Zh => format!(
+            " 节点列表 Nodes in '{}' [{} 节点] [Enter:切换节点 | 't':测速 | 's':搜索] ",
+            group_name,
+            filtered_nodes.len()
+        ),
+        Language::En => format!(
+            " Node List in '{}' [{} nodes] [Enter: Select | 't': Test | 's': Search] ",
+            group_name,
+            filtered_nodes.len()
+        ),
+    };
 
     let nodes_list = List::new(node_items)
         .block(

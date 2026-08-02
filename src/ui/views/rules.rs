@@ -1,4 +1,5 @@
 use crate::app::AppState;
+use crate::ui::i18n::Language;
 use crate::ui::theme::Theme;
 use ratatui::{
     layout::{Constraint, Rect},
@@ -8,6 +9,8 @@ use ratatui::{
 };
 
 pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
+    let lang = Language::from_str(&state.settings_lang);
+
     let header_cells = ["INDEX", "TYPE", "PAYLOAD / MATCH RULE", "PROXY TARGET"]
         .iter()
         .map(|h| ratatui::widgets::Cell::from(*h).style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)));
@@ -54,7 +57,10 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .or_else(|| state.parsed_active_profile.as_ref().map(|p| p.rules.len()))
         .unwrap_or(0);
 
-    let title_str = format!(" 规则列表 Rules List Total: {} [j/k: 移动滚动] ", rules_count);
+    let title_str = match lang {
+        Language::Zh => format!(" 路由规则列表 Rules List Total: {} [j/k: 移动滚动] ", rules_count),
+        Language::En => format!(" Rules List ({}) [j/k: Scroll] ", rules_count),
+    };
 
     let table = Table::new(
         rows,

@@ -51,15 +51,19 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
 
     // 1. Header Status Badges & Purpose
     let auth_badge = if state.is_tun_privileged {
-        Span::styled(" [ ✔ 已授权 CAP_NET_ADMIN ] ", Style::default().fg(Color::Rgb(17, 17, 27)).bg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD))
+        let text = match lang { Language::Zh => " [ ✔ 已授权 CAP_NET_ADMIN ] ", Language::En => " [ ✔ Authorized CAP_NET_ADMIN ] " };
+        Span::styled(text, Style::default().fg(Color::Rgb(17, 17, 27)).bg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD))
     } else {
-        Span::styled(" [ ✖ 未授权 CAP_NET_ADMIN ] ", Style::default().fg(Color::White).bg(Color::Rgb(243, 139, 168)).add_modifier(Modifier::BOLD))
+        let text = match lang { Language::Zh => " [ ✖ 未授权 CAP_NET_ADMIN ] ", Language::En => " [ ✖ Unauthorized CAP_NET_ADMIN ] " };
+        Span::styled(text, Style::default().fg(Color::White).bg(Color::Rgb(243, 139, 168)).add_modifier(Modifier::BOLD))
     };
 
     let iface_badge = if state.is_tun_interface_up {
-        Span::styled(format!(" [ 🌐 网卡: {} (UP) ] ", state.tun_interface_name), Style::default().fg(Color::Rgb(17, 17, 27)).bg(Color::Rgb(137, 220, 235)).add_modifier(Modifier::BOLD))
+        let text = match lang { Language::Zh => format!(" [ 🌐 网卡: {} (UP) ] ", state.tun_interface_name), Language::En => format!(" [ 🌐 Interface: {} (UP) ] ", state.tun_interface_name) };
+        Span::styled(text, Style::default().fg(Color::Rgb(17, 17, 27)).bg(Color::Rgb(137, 220, 235)).add_modifier(Modifier::BOLD))
     } else {
-        Span::styled(" [ 🌐 网卡: 未创建 ] ", Style::default().fg(Color::White).bg(Color::Rgb(88, 91, 112)))
+        let text = match lang { Language::Zh => " [ 🌐 网卡: 未创建 ] ", Language::En => " [ 🌐 Interface: None ] " };
+        Span::styled(text, Style::default().fg(Color::White).bg(Color::Rgb(88, 91, 112)))
     };
 
     let header_lines = if lang == Language::Zh {
@@ -93,7 +97,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
                 Span::styled("tun0", Style::default().fg(Color::Rgb(137, 220, 235)).add_modifier(Modifier::BOLD)),
                 Span::raw(" to manage IP traffic with "),
                 Span::styled("CAP_NET_ADMIN", Style::default().fg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD)),
-                Span::raw("."),
+                Span::raw(" capability."),
             ]),
         ]
     };
@@ -104,12 +108,15 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     f.render_widget(header_p, chunks[0]);
 
     // 2. Target Binary Path Card
+    let not_found_str = match lang { Language::Zh => "未知/未找到路径", Language::En => "Unknown / Path not found" };
+    let target_label = match lang { Language::Zh => " 🎯 目标程序: ", Language::En => " 🎯 Target Executable: " };
+
     let binary_path = crate::core::CoreProcess::find_mihomo_binary()
         .map(|p| p.to_string_lossy().to_string())
-        .unwrap_or_else(|| "未知/未找到路径".to_string());
+        .unwrap_or_else(|| not_found_str.to_string());
 
     let target_lines = vec![Line::from(vec![
-        Span::styled(" 🎯 目标程序: ", Style::default().fg(Color::Rgb(137, 220, 235))),
+        Span::styled(target_label, Style::default().fg(Color::Rgb(137, 220, 235))),
         Span::styled(binary_path, Style::default().fg(Color::White)),
     ])];
 
@@ -130,11 +137,20 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         Style::default().fg(Theme::BORDER)
     };
 
+    let pass_placeholder_active = match lang {
+        Language::Zh => " 🔑 请在此输入 Sudo / Root 密码 (按 Enter 提交)_",
+        Language::En => " 🔑 Enter Sudo / Root Password (Press Enter)_",
+    };
+    let pass_placeholder_idle = match lang {
+        Language::Zh => " 🔑 点击或按 Tab 聚焦输入 Sudo 密码",
+        Language::En => " 🔑 Click or press Tab to focus password input",
+    };
+
     let pass_display = if state.tun_password_input.is_empty() {
         if is_pass_focused {
-            Span::styled(" 🔑 请在此输入 Sudo / Root 密码 (按 Enter 提交)_", Style::default().fg(Color::Rgb(147, 153, 178)))
+            Span::styled(pass_placeholder_active, Style::default().fg(Color::Rgb(147, 153, 178)))
         } else {
-            Span::styled(" 🔑 点击或按 Tab 聚焦输入 Sudo 密码", Style::default().fg(Theme::TEXT_MUTED))
+            Span::styled(pass_placeholder_idle, Style::default().fg(Theme::TEXT_MUTED))
         }
     } else {
         let masked = "●".repeat(state.tun_password_input.chars().count());
@@ -142,12 +158,17 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         Span::styled(format!(" {}{}", masked, cursor_suffix), Style::default().fg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD))
     };
 
+    let title_pass_block = match lang {
+        Language::Zh => " Sudo / Root 密码 (Password Input) ",
+        Language::En => " Sudo / Root Password ",
+    };
+
     let pass_p = Paragraph::new(vec![Line::from(vec![pass_display])]).block(
         Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .border_style(pass_border_style)
-            .title(" Sudo / Root 密码 (Password Input) "),
+            .title(title_pass_block),
     );
     f.render_widget(pass_p, chunks[2]);
 

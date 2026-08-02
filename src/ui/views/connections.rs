@@ -1,4 +1,5 @@
 use crate::app::AppState;
+use crate::ui::i18n::Language;
 use crate::ui::theme::{format_bytes, Theme};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
@@ -9,6 +10,8 @@ use ratatui::{
 };
 
 pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
+    let lang = Language::from_str(&state.settings_lang);
+
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -26,6 +29,10 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .split(chunks[0]);
 
     if state.is_searching {
+        let search_title = match lang {
+            Language::Zh => " 连接搜索 Search Connections ",
+            Language::En => " Search Connections ",
+        };
         let search_text = format!(" 🔍 Search Connections: {}_", state.search_query);
         let search_block = Paragraph::new(search_text)
             .block(
@@ -33,7 +40,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
                     .borders(Borders::ALL)
                     .border_type(BorderType::Rounded)
                     .border_style(Style::default().fg(Color::Yellow))
-                    .title(" 连接搜索 Search Connections "),
+                    .title(search_title),
             );
         f.render_widget(search_block, top_chunks[0]);
     }
@@ -105,12 +112,25 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         ]));
     }
 
-    let sort_label = if state.sort_connections_by_traffic { "流量降序" } else { "默认顺序" };
-    let title_str = format!(
-        " 活动连接 Connections ({}) [{}] ['d':断开选定 | 'D':全切断 | 's':排序 | '/':搜索] ",
-        conn_list.len(),
-        sort_label
-    );
+    let sort_label = match (state.sort_connections_by_traffic, lang) {
+        (true, Language::Zh) => "流量降序",
+        (true, Language::En) => "By Traffic",
+        (false, Language::Zh) => "默认顺序",
+        (false, Language::En) => "Default",
+    };
+
+    let title_str = match lang {
+        Language::Zh => format!(
+            " 活动连接 Connections ({}) [{}] ['d':断开选定 | 'D':全切断 | 's':排序 | '/':搜索] ",
+            conn_list.len(),
+            sort_label
+        ),
+        Language::En => format!(
+            " Active Connections ({}) [{}] ['d': Close | 'D': Close All | 's': Sort | '/': Search] ",
+            conn_list.len(),
+            sort_label
+        ),
+    };
 
     let table = Table::new(
         rows,
@@ -161,23 +181,31 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
                 conn.rule_payload.as_deref().unwrap_or("")
             );
 
+            let label_detail = match lang { Language::Zh => " [连接详情 Detail] ", Language::En => " [Detail] " };
+            let label_proc = match lang { Language::Zh => " [进程与路径 Process] ", Language::En => " [Process & Path] " };
+            let label_rule = match lang { Language::Zh => " [匹配规则 Rule] ", Language::En => " [Rule Match] " };
+
             detail_lines.push(Line::from(vec![
-                Span::styled(" [连接详情 Detail] ", Style::default().fg(Color::LightMagenta).add_modifier(Modifier::BOLD)),
+                Span::styled(label_detail, Style::default().fg(Color::LightMagenta).add_modifier(Modifier::BOLD)),
                 Span::raw(host_ip),
             ]));
             detail_lines.push(Line::from(vec![
-                Span::styled(" [进程与路径 Process] ", Style::default().fg(Color::Cyan)),
+                Span::styled(label_proc, Style::default().fg(Color::Cyan)),
                 Span::raw(process_info),
             ]));
             detail_lines.push(Line::from(vec![
-                Span::styled(" [匹配规则 Rule] ", Style::default().fg(Color::Yellow)),
+                Span::styled(label_rule, Style::default().fg(Color::Yellow)),
                 Span::raw(rule_info),
             ]));
         }
     }
 
     if detail_lines.is_empty() {
-        detail_lines.push(Line::from(Span::styled("无选定连接信息 (No connection selected)", Style::default().fg(Theme::TEXT_MUTED))));
+        let no_conn_str = match lang {
+            Language::Zh => "无选定连接信息 (No connection selected)",
+            Language::En => "No connection selected",
+        };
+        detail_lines.push(Line::from(Span::styled(no_conn_str, Style::default().fg(Theme::TEXT_MUTED))));
     }
 
     let detail_block = Paragraph::new(detail_lines)
