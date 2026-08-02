@@ -7,6 +7,7 @@ use tracing::{info, warn};
 
 static MIHOMO_PID: AtomicU32 = AtomicU32::new(0);
 static CHILD_PROCESS: Mutex<Option<Child>> = Mutex::new(None);
+static LAST_CONFIG_PATH: Mutex<Option<PathBuf>> = Mutex::new(None);
 
 pub struct CoreProcess;
 
@@ -64,8 +65,13 @@ impl CoreProcess {
 
     /// Start Mihomo Core process with `mihomo -f profile.yaml`
     pub fn start_with_config(config_path: &Path) -> Result<u32> {
+        if let Ok(mut path_guard) = LAST_CONFIG_PATH.lock() {
+            *path_guard = Some(config_path.to_path_buf());
+        }
+
         if Self::is_running() {
             Self::stop()?;
+            std::thread::sleep(std::time::Duration::from_millis(200));
         }
 
         let binary = Self::find_mihomo_binary()
@@ -111,9 +117,9 @@ impl CoreProcess {
         let pid = MIHOMO_PID.swap(0, Ordering::Relaxed);
         if pid > 0 {
             unsafe {
-                libc::kill(pid as i32, libc::SIGTERM);
+                libc::kill(pid as i32, libc::SIGKILL);
             }
-            info!("Sent SIGTERM to Mihomo PID {}", pid);
+            info!("Sent SIGKILL to Mihomo PID {}", pid);
         }
 
         if let Ok(mut guard) = CHILD_PROCESS.lock() {
@@ -131,13 +137,21 @@ impl CoreProcess {
     }
 
     pub fn restart() -> Result<()> {
-        let pid = MIHOMO_PID.load(Ordering::Relaxed);
-        if pid > 0 {
-            unsafe {
-                libc::kill(pid as i32, libc::SIGHUP);
+        let last_path = LAST_CONFIG_PATH.lock().ok().and_then(|g| g.clone());
+
+        if let Some(path) = last_path {
+            info!("Restarting Mihomo Core via process re-execution with config {:?}", path);
+            let _ = Self::stop();
+            std::thread::sleep(std::time::Duration::from_millis(300));
+            return Self::start_with_config(&path).map(|_| ());
+        }
+
+        if let Ok(profiles) = crate::profile::ProfileManager::list_profiles() {
+            if let Some(active) = profiles.into_iter().find(|p| p.is_active) {
+                let _ = Self::stop();
+                std::thread::sleep(std::time::Duration::from_millis(300));
+                return Self::start_with_config(&active.file_path).map(|_| ());
             }
-            info!("Sent SIGHUP to Mihomo PID {}", pid);
-            return Ok(());
         }
 
         let output = StdCommand::new("systemctl")
