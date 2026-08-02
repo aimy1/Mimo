@@ -553,7 +553,13 @@ impl App {
                                         self.state.search_query.clear();
                                     }
                                 }
-                                KeyCode::Char('t') | KeyCode::Char('T') if self.state.active_tab == Tab::Proxies => self.test_selected_group_latency(),
+                                KeyCode::Char('t') | KeyCode::Char('T') => {
+                                    if self.state.active_tab == Tab::Proxies {
+                                        self.test_selected_group_latency();
+                                    } else if self.state.active_tab == Tab::Dashboard {
+                                        self.test_all_sites_latency();
+                                    }
+                                }
                                 KeyCode::Char('o') | KeyCode::Char('O') if self.state.active_tab == Tab::Proxies => {
                                     self.state.sort_nodes_by_latency = !self.state.sort_nodes_by_latency;
                                     let status = if self.state.sort_nodes_by_latency { "已开启延迟升序排序" } else { "已恢复默认节点顺序" };
@@ -666,7 +672,11 @@ impl App {
                         else {
                             self.state.focus_zone = FocusZone::Workspace;
 
-                            if self.state.active_tab == Tab::Settings {
+                            if self.state.active_tab == Tab::Dashboard {
+                                if row >= 10 && row <= 16 {
+                                    self.test_all_sites_latency();
+                                }
+                            } else if self.state.active_tab == Tab::Settings {
                                 if col < 55 {
                                     if row >= 4 && row <= 6 {
                                         self.state.settings_focus = 0;
@@ -1181,6 +1191,15 @@ impl App {
                 self.state.latency_map.insert(node, delay);
             }
 
+            Action::TestSiteLatencies => {
+                self.test_all_sites_latency();
+            }
+
+            Action::SiteLatencyResult { site, result } => {
+                let delay = result.ok();
+                self.state.site_latencies.insert(site, delay);
+            }
+
             _ => {}
         }
 
@@ -1400,6 +1419,51 @@ impl App {
             tokio::spawn(async move {
                 let delay = client.test_delay(&node_name, None, None).await.map_err(|e| e.to_string());
                 let _ = tx.send(Action::LatencyResult { node: node_name, result: delay }).await;
+            });
+        }
+    }
+
+    pub fn test_all_sites_latency(&mut self) {
+        self.state.push_toast("正在刷新 6 大常用网站连通性延迟...".to_string());
+        for key in ["Google", "GitHub", "YouTube", "OpenAI", "Bilibili", "Baidu"] {
+            self.state.site_latencies.insert(key.to_string(), None);
+        }
+
+        let sites = [
+            ("Google", "https://www.google.com/generate_204"),
+            ("GitHub", "https://github.com"),
+            ("YouTube", "https://www.youtube.com"),
+            ("OpenAI", "https://chatgpt.com"),
+            ("Bilibili", "https://www.bilibili.com"),
+            ("Baidu", "https://www.baidu.com"),
+        ];
+
+        let client = self.client.clone();
+        let tx = self.action_tx.clone();
+
+        for (site_name, url) in sites {
+            let site_name = site_name.to_string();
+            let url = url.to_string();
+            let client = client.clone();
+            let tx = tx.clone();
+
+            tokio::spawn(async move {
+                let start = std::time::Instant::now();
+                let res = match client.test_delay("GLOBAL", Some(&url), Some(3000)).await {
+                    Ok(ms) => Ok(ms),
+                    Err(_) => {
+                        let http_client = reqwest::Client::builder()
+                            .timeout(Duration::from_millis(3000))
+                            .build()
+                            .unwrap_or_default();
+                        if http_client.get(&url).send().await.is_ok() {
+                            Ok(start.elapsed().as_millis() as u16)
+                        } else {
+                            Err("Timeout".to_string())
+                        }
+                    }
+                };
+                let _ = tx.send(Action::SiteLatencyResult { site: site_name, result: res }).await;
             });
         }
     }

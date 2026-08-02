@@ -149,6 +149,20 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     f.render_widget(sys_info_block, top_chunks[1]);
 
     // 2. Middle 1 Section: Site & Service Connectivity Testing
+    let site_outer_block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(Theme::BORDER))
+        .title(" 🌐 常用网站连通性测试 Site Connectivity [按 't' 键 / 点击刷新] ");
+    f.render_widget(site_outer_block, main_chunks[1]);
+
+    let inner_site_area = Rect {
+        x: main_chunks[1].x + 1,
+        y: main_chunks[1].y + 1,
+        width: main_chunks[1].width.saturating_sub(2),
+        height: main_chunks[1].height.saturating_sub(2),
+    };
+
     let sites = [
         ("Google", "https://www.google.com"),
         ("GitHub", "https://github.com"),
@@ -168,7 +182,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
             Constraint::Percentage(18),
             Constraint::Percentage(18),
         ])
-        .split(main_chunks[1]);
+        .split(inner_site_area);
 
     for (idx, (site_name, url)) in sites.iter().enumerate() {
         if let Some(target_area) = site_chunks.get(idx) {
@@ -177,21 +191,19 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
                 Some(ms) if ms < 100 => (format!("{} ms [极速]", ms), Style::default().fg(Color::Rgb(166, 227, 161)).add_modifier(Modifier::BOLD)),
                 Some(ms) if ms < 300 => (format!("{} ms [良好]", ms), Style::default().fg(Color::Rgb(137, 220, 235)).add_modifier(Modifier::BOLD)),
                 Some(ms) => (format!("{} ms [一般]", ms), Style::default().fg(Color::Rgb(250, 179, 135)).add_modifier(Modifier::BOLD)),
-                None => ("超时 / Timeout".into(), Style::default().fg(Color::Rgb(243, 139, 168))),
+                None => ("测试中/超时".into(), Style::default().fg(Color::Rgb(243, 139, 168))),
             };
 
             let text = vec![
-                Line::from(Span::styled(*site_name, Style::default().fg(Color::Rgb(205, 214, 244)).add_modifier(Modifier::BOLD))),
+                Line::from(vec![
+                    Span::styled(*site_name, Style::default().fg(Color::Rgb(205, 214, 244)).add_modifier(Modifier::BOLD)),
+                    Span::raw(" "),
+                    Span::styled(status_str, style),
+                ]),
                 Line::from(Span::styled(url.trim_start_matches("https://"), Style::default().fg(Theme::TEXT_MUTED))),
-                Line::from(Span::styled(status_str, style)),
             ];
 
-            let card = Paragraph::new(text).block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Rounded)
-                    .border_style(Style::default().fg(Theme::BORDER)),
-            );
+            let card = Paragraph::new(text);
             f.render_widget(card, *target_area);
         }
     }
@@ -238,7 +250,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     let quick_info = vec![
         Line::from(vec![
             Span::styled(" 快捷按键 Keybindings: ", Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled(" [m] 模式切换  [p] 系统代理  [x] TUN模式  [r] 重启核心  [?] 帮助  [1-0] 页面直达 ", Style::default().fg(Color::Rgb(205, 214, 244))),
+            Span::styled(" [m] 模式切换  [p] 系统代理  [x] TUN模式  [t] 网站/节点测速  [r] 重启核心  [?] 帮助  [1-0] 页面直达 ", Style::default().fg(Color::Rgb(205, 214, 244))),
         ]),
     ];
     let info_block = Paragraph::new(quick_info)

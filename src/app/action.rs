@@ -61,6 +61,8 @@ pub enum Action {
     ConfirmSelectNode,
     TestSelectedGroupLatency,
     BatchTestGroupLatency,
+    TestSiteLatencies,
+    SiteLatencyResult { site: String, result: Result<u16, String> },
     ToggleNodeSort,
     ChangeMode(String),
     CloseSelectedConnection,
