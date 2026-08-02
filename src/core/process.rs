@@ -75,15 +75,26 @@ impl CoreProcess {
 
         let work_dir = config_path.parent().and_then(|p| p.parent()).unwrap_or_else(|| Path::new("/home/fd/.config/mimo"));
 
-        let child = StdCommand::new(&binary)
-            .arg("-d")
+        use std::os::unix::process::CommandExt;
+
+        let mut cmd = StdCommand::new(&binary);
+        cmd.arg("-d")
             .arg(work_dir)
             .arg("-f")
             .arg(config_path)
+            .stdin(Stdio::null())
             .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()
-            .context("Failed to spawn Mihomo Core process")?;
+            .stderr(Stdio::null());
+
+        unsafe {
+            cmd.pre_exec(|| {
+                // Detach controlling TTY so Polkit/DBus never spawns text pkttyagent on Mimo's terminal screen
+                libc::setsid();
+                Ok(())
+            });
+        }
+
+        let child = cmd.spawn().context("Failed to spawn Mihomo Core process")?;
 
         let pid = child.id();
         MIHOMO_PID.store(pid, Ordering::Relaxed);

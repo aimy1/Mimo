@@ -140,7 +140,7 @@ impl TunMode {
         }
     }
 
-    /// Grant TUN capability via Polkit GUI (pkexec without TTY fallback)
+    /// Grant TUN capability via Polkit GUI (pkexec --disable-internal-agent without TTY fallback)
     pub fn grant_privilege_pkexec() -> Result<()> {
         let binary = match crate::core::CoreProcess::find_mihomo_binary() {
             Some(b) => b,
@@ -149,9 +149,9 @@ impl TunMode {
 
         let binary_str = binary.to_string_lossy().to_string();
 
-        // Pass Stdio::null() so pkexec NEVER writes text to TTY terminal stdout/stderr!
+        // Use --disable-internal-agent so pkexec NEVER spawns text pkttyagent in controlling TTY!
         if let Ok(status) = Command::new("pkexec")
-            .args(["setcap", "cap_net_admin+ep", &binary_str])
+            .args(["--disable-internal-agent", "setcap", "cap_net_admin+ep", &binary_str])
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -175,7 +175,7 @@ impl TunMode {
         let binary_str = binary.to_string_lossy().to_string();
 
         if let Ok(status) = Command::new("pkexec")
-            .args(["setcap", "-r", &binary_str])
+            .args(["--disable-internal-agent", "setcap", "-r", &binary_str])
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -188,6 +188,9 @@ impl TunMode {
 
         let output = Command::new("sudo")
             .args(["-n", "setcap", "-r", &binary_str])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
             .output()?;
 
         if output.status.success() {
