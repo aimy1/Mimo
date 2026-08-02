@@ -105,7 +105,7 @@ impl MihomoClient {
 
     /// PATCH /configs tun mode
     pub async fn set_tun_enabled(&self, enable: bool) -> Result<()> {
-        self.set_tun_config(enable, "system").await
+        self.set_tun_config(enable, "gvisor").await
     }
 
     /// PATCH /configs tun mode with specific stack (system, gvisor, lwip)

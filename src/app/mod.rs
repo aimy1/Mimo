@@ -1063,11 +1063,12 @@ impl App {
                             self.state.push_toast("🎉 系统权限授权成功 (CAP_NET_ADMIN)".to_string());
 
                             let client = self.client.clone();
+                            let stack = self.state.settings_tun_stack.clone();
                             let tx = self.action_tx.clone();
                             tokio::spawn(async move {
                                 let _ = crate::core::CoreProcess::restart();
-                                tokio::time::sleep(std::time::Duration::from_millis(600)).await;
-                                if client.set_tun_enabled(true).await.is_ok() {
+                                tokio::time::sleep(std::time::Duration::from_millis(800)).await;
+                                if client.set_tun_config(true, &stack).await.is_ok() {
                                     let _ = tx.send(Action::FetchConfig).await;
                                 }
                             });
@@ -1077,9 +1078,10 @@ impl App {
                             self.state.push_toast("🚫 已成功撤销 CAP_NET_ADMIN 系统权限".to_string());
 
                             let client = self.client.clone();
+                            let stack = self.state.settings_tun_stack.clone();
                             let tx = self.action_tx.clone();
                             tokio::spawn(async move {
-                                let _ = client.set_tun_enabled(false).await;
+                                let _ = client.set_tun_config(false, &stack).await;
                                 let _ = crate::core::CoreProcess::restart();
                                 let _ = tx.send(Action::FetchConfig).await;
                             });
@@ -1109,9 +1111,10 @@ impl App {
                             self.state.is_tun_enabled = false;
                             self.state.push_toast("🚫 已成功撤销 CAP_NET_ADMIN 系统权限".to_string());
                             let client = self.client.clone();
+                            let stack = self.state.settings_tun_stack.clone();
                             let tx = self.action_tx.clone();
                             tokio::spawn(async move {
-                                let _ = client.set_tun_enabled(false).await;
+                                let _ = client.set_tun_config(false, &stack).await;
                                 let _ = crate::core::CoreProcess::restart();
                                 let _ = tx.send(Action::FetchConfig).await;
                             });
@@ -1125,9 +1128,10 @@ impl App {
                             self.state.is_tun_enabled = false;
                             self.state.push_toast("🚫 已成功撤销 CAP_NET_ADMIN 系统权限".to_string());
                             let client = self.client.clone();
+                            let stack = self.state.settings_tun_stack.clone();
                             let tx = self.action_tx.clone();
                             tokio::spawn(async move {
-                                let _ = client.set_tun_enabled(false).await;
+                                let _ = client.set_tun_config(false, &stack).await;
                                 let _ = crate::core::CoreProcess::restart();
                                 let _ = tx.send(Action::FetchConfig).await;
                             });
@@ -1150,9 +1154,10 @@ impl App {
                 } else {
                     let client = self.client.clone();
                     let new_state = !self.state.is_tun_enabled;
+                    let stack = self.state.settings_tun_stack.clone();
                     let tx = self.action_tx.clone();
                     tokio::spawn(async move {
-                        if client.set_tun_enabled(new_state).await.is_ok() {
+                        if client.set_tun_config(new_state, &stack).await.is_ok() {
                             let _ = tx.send(Action::FetchConfig).await;
                         }
                     });
