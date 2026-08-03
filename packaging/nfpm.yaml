@@ -1,0 +1,52 @@
+# NFPM (nFPM) Packaging Configuration for Mimo
+# Generates .deb, .rpm, and .apk packages across architectures
+
+name: "mimo"
+arch: "${ARCH}"
+platform: "linux"
+version: "${VERSION}"
+release: "1"
+section: "net"
+priority: "optional"
+maintainer: "aisaniya <aimy1@github.com>"
+description: |
+  Minimalist Mihomo Manager - Modern Linux Terminal TUI & CLI Proxy Control Center.
+  Provides zero-dependency Mihomo core auto-downloader, TUN mode capability management,
+  real-time connection & bandwidth sparklines, and 10 workspace tabs.
+vendor: "aisaniya"
+homepage: "https://github.com/aimy1/Mimo"
+license: "MIT"
+
+contents:
+  - src: "${BIN_PATH}"
+    dst: "/usr/bin/mimo"
+    file_info:
+      mode: 0755
+  - src: "packaging/mimo.desktop"
+    dst: "/usr/share/applications/mimo.desktop"
+    file_info:
+      mode: 0644
+  - src: "README.md"
+    dst: "/usr/share/doc/mimo/README.md"
+    file_info:
+      mode: 0644
+
+overrides:
+  deb:
+    depends:
+      - libc6
+      - ca-certificates
+    recommends:
+      - libcap2-bin
+  rpm:
+    depends:
+      - glibc
+      - ca-certificates
+
+scripts:
+  postinstall: |
+    #!/bin/sh
+    # Grant CAP_NET_ADMIN capabilities to binary if setcap is available
+    if command -v setcap >/dev/null 2>&1; then
+      setcap cap_net_admin+ep /usr/bin/mimo 2>/dev/null || true
+    fi

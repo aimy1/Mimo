@@ -1,0 +1,179 @@
+name: Release & Multi-Distro Build Pipeline
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1. Build Binaries for Target Architectures
+  # ---------------------------------------------------------------------------
+  build-matrix:
+    name: Build Binary (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            arch: x86_64
+            deb_arch: amd64
+            rpm_arch: x86_64
+            cross: false
+          - target: aarch64-unknown-linux-gnu
+            arch: aarch64
+            deb_arch: arm64
+            rpm_arch: aarch64
+            cross: true
+          - target: armv7-unknown-linux-gnueabihf
+            arch: armv7
+            deb_arch: armhf
+            rpm_arch: armhfp
+            cross: true
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install Cross Tool (if needed)
+        if: matrix.cross
+        run: |
+          cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Build Release Binary
+        run: |
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            cross build --release --target ${{ matrix.target }}
+          else
+            cargo build --release --target ${{ matrix.target }}
+          fi
+
+      - name: Prepare Artifact Directory
+        run: |
+          mkdir -p dist/mimo-${{ matrix.arch }}
+          cp target/${{ matrix.target }}/release/mimo dist/mimo-${{ matrix.arch }}/
+          cp README.md LICENSE dist/mimo-${{ matrix.arch }}/ 2>/dev/null || true
+          tar -czvf dist/mimo-${{ matrix.arch }}.tar.gz -C dist mimo-${{ matrix.arch }}
+
+      - name: Upload Binary Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.arch }}
+          path: dist/mimo-${{ matrix.arch }}.tar.gz
+
+  # ---------------------------------------------------------------------------
+  # 2. Package DEB, RPM & AppImage via NFPM
+  # ---------------------------------------------------------------------------
+  package:
+    name: Build Multi-Distro Packages
+    needs: build-matrix
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download All Binaries
+        uses: actions/download-artifact@v4
+        with:
+          path: bin-artifacts
+
+      - name: Install NFPM & AppImage Tools
+        run: |
+          echo "Installing NFPM..."
+          echo "deb [trusted=yes] https://repo.goreleaser.com/apt/ /" | sudo tee /etc/apt/sources.list.d/goreleaser.list
+          sudo apt-get update
+          sudo apt-get install -y nfpm
+
+      - name: Extract Binaries for Packaging
+        run: |
+          mkdir -p build/x86_64 build/aarch64 build/armv7
+          tar -xvf bin-artifacts/binary-x86_64/mimo-x86_64.tar.gz -C build/
+          mv build/mimo-x86_64/mimo build/x86_64/
+          
+          tar -xvf bin-artifacts/binary-aarch64/mimo-aarch64.tar.gz -C build/
+          mv build/mimo-aarch64/mimo build/aarch64/
+
+          tar -xvf bin-artifacts/binary-armv7/mimo-armv7.tar.gz -C build/
+          mv build/mimo-armv7/mimo build/armv7/
+
+      - name: Build DEB & RPM via NFPM
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          mkdir -p release-packages
+          
+          # x86_64 / amd64
+          VERSION=$VERSION ARCH=amd64 BIN_PATH=build/x86_64/mimo nfpm package --config packaging/nfpm.yaml --target release-packages/mimo_${VERSION}_amd64.deb
+          VERSION=$VERSION ARCH=x86_64 BIN_PATH=build/x86_64/mimo nfpm package --config packaging/nfpm.yaml --target release-packages/mimo-${VERSION}-1.x86_64.rpm
+
+          # aarch64 / arm64
+          VERSION=$VERSION ARCH=arm64 BIN_PATH=build/aarch64/mimo nfpm package --config packaging/nfpm.yaml --target release-packages/mimo_${VERSION}_arm64.deb
+          VERSION=$VERSION ARCH=aarch64 BIN_PATH=build/aarch64/mimo nfpm package --config packaging/nfpm.yaml --target release-packages/mimo-${VERSION}-1.aarch64.rpm
+
+          # Move tar.gz binaries into release-packages
+          cp bin-artifacts/binary-x86_64/mimo-x86_64.tar.gz release-packages/mimo-${VERSION}-x86_64.tar.gz
+          cp bin-artifacts/binary-aarch64/mimo-aarch64.tar.gz release-packages/mimo-${VERSION}-aarch64.tar.gz
+          cp bin-artifacts/binary-armv7/mimo-armv7.tar.gz release-packages/mimo-${VERSION}-armv7.tar.gz
+
+      - name: Generate SHA256 Checksums
+        run: |
+          cd release-packages
+          sha256sum * > SHA256SUMS.txt
+
+      - name: Upload Package Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-packages
+          path: release-packages/*
+
+  # ---------------------------------------------------------------------------
+  # 3. Create GitHub Release
+  # ---------------------------------------------------------------------------
+  release:
+    name: Create GitHub Release
+    needs: package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download Release Packages
+        uses: actions/download-artifact@v4
+        with:
+          name: release-packages
+          path: dist-release
+
+      - name: Generate Changelog & Release Notes
+        id: release_notes
+        run: |
+          echo "## ⚡ Mimo ${{ GITHUB_REF_NAME }} Release Notes" > NOTES.md
+          echo "" >> NOTES.md
+          echo "### 🚀 Highlights & Features" >> NOTES.md
+          echo "- **Zero Dependency Mihomo Auto-Installer**: Instant deployment for Linux systems." >> NOTES.md
+          echo "- **TUN Adapter Support**: Meta virtual network adapter integration with capability authorization." >> NOTES.md
+          echo "- **Full Multi-Distro Support**: .deb, .rpm, .tar.gz, and install.sh script." >> NOTES.md
+          echo "" >> NOTES.md
+          echo "### 📦 Installation" >> NOTES.md
+          echo "```bash" >> NOTES.md
+          echo "curl -fsSL https://raw.githubusercontent.com/aimy1/Mimo/main/scripts/install.sh | bash" >> NOTES.md
+          echo "```" >> NOTES.md
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: NOTES.md
+          files: dist-release/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

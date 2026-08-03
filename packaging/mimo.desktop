@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Mimo
+Comment=Minimalist Mihomo Manager Terminal TUI
+Exec=mimo
+Icon=utilities-terminal
+Terminal=true
+Type=Application
+Categories=Network;Utility;
+Keywords=mihomo;clash;proxy;vpn;tui;
