@@ -15,21 +15,17 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(4), // Logo & Author Header Banner
+            Constraint::Length(3), // Logo Header Banner
             Constraint::Min(0),    // Clean Iconless Navigation List
             Constraint::Length(5), // Extended Status Card
         ])
         .split(area);
 
-    // 1. Top Logo & Author Header
+    // 1. Top Logo Header
     let logo_text = vec![
         Line::from(vec![
-            Span::styled(" MIMO ", Style::default().fg(Color::Rgb(203, 166, 247)).add_modifier(Modifier::BOLD)),
+            Span::styled("⚡ MIMO ", Style::default().fg(Color::Rgb(203, 166, 247)).add_modifier(Modifier::BOLD)),
             Span::styled("v0.2.0", Style::default().fg(Theme::TEXT_MUTED)),
-        ]),
-        Line::from(vec![
-            Span::styled(" by ", Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled("aisaniya", Style::default().fg(Color::Rgb(249, 226, 175)).add_modifier(Modifier::BOLD)),
         ]),
     ];
 
