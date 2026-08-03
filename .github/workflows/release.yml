@@ -155,7 +155,7 @@ jobs:
       - name: Generate Changelog & Release Notes
         id: release_notes
         run: |
-          echo "## ⚡ Mimo ${{ GITHUB_REF_NAME }} Release Notes" > NOTES.md
+          echo "## ⚡ Mimo ${{ github.ref_name }} Release Notes" > NOTES.md
           echo "" >> NOTES.md
           echo "### 🚀 Highlights & Features" >> NOTES.md
           echo "- **Zero Dependency Mihomo Auto-Installer**: Instant deployment for Linux systems." >> NOTES.md
