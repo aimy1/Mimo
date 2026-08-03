@@ -187,6 +187,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
             Constraint::Length(3), // 9: Log Level
             Constraint::Length(3), // 10: Allow LAN
             Constraint::Length(3), // 11: IPv6 Traffic
+            Constraint::Length(3), // 12: Download / Update Mihomo Core
             Constraint::Min(0),
         ])
         .split(card3_inner);
@@ -221,9 +222,16 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     );
     f.render_widget(p_11, card3_chunks[3]);
 
+    // 12: Download / Update Mihomo Core Binary
+    let style_12 = if state.settings_focus == 12 { Style::default().fg(Color::Rgb(17, 17, 27)).bg(Color::Rgb(203, 166, 247)).add_modifier(Modifier::BOLD) } else { Style::default().fg(Color::Rgb(203, 166, 247)) };
+    let p_12 = Paragraph::new(" ⬇️  下载 / 更新 Mihomo 核心 (Download/Update Core)  [Space / Enter 触发]").block(
+        Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(if state.settings_focus == 12 { Style::default().fg(Theme::BORDER_FOCUS) } else { Style::default().fg(Theme::BORDER) }).title(" Mihomo Binary Manager (核心版本管理) "),
+    ).style(style_12);
+    f.render_widget(p_12, card3_chunks[4]);
+
     // -------------------------------------------------------------------------
     // RIGHT COLUMN BOTTOM: Card 4 - 🎨 界面与偏好风格 Preferences & Themes
-    // Focus Items: 12 (Language), 13 (UI Theme), 14 (Refresh Rate)
+    // Focus Items: 13 (Language), 14 (UI Theme), 15 (Refresh Rate)
     // -------------------------------------------------------------------------
     let card4_block = Block::default()
         .borders(Borders::ALL)
@@ -238,39 +246,39 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .direction(Direction::Vertical)
         .margin(1)
         .constraints([
-            Constraint::Length(3), // 12: Language
-            Constraint::Length(3), // 13: UI Theme
-            Constraint::Length(3), // 14: Refresh Rate
+            Constraint::Length(3), // 13: Language
+            Constraint::Length(3), // 14: UI Theme
+            Constraint::Length(3), // 15: Refresh Rate
             Constraint::Min(0),
         ])
         .split(card4_inner);
 
-    // 12: Language
-    let style_12 = if state.settings_focus == 12 { Style::default().fg(Theme::BORDER_FOCUS).add_modifier(Modifier::BOLD) } else { Style::default().fg(Theme::BORDER) };
-    let lang_display = if state.settings_lang == "zh" { " 简体中文 (Chinese)  [Space 切换]" } else { " English  [Space Switch]" };
-    let p_12 = Paragraph::new(lang_display).block(
-        Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(style_12).title(" Interface Language (语言) "),
-    );
-    f.render_widget(p_12, card4_chunks[0]);
-
-    // 13: UI Theme
+    // 13: Language
     let style_13 = if state.settings_focus == 13 { Style::default().fg(Theme::BORDER_FOCUS).add_modifier(Modifier::BOLD) } else { Style::default().fg(Theme::BORDER) };
-    let p_13 = Paragraph::new(format!(" {}  [Space 切换 Catppuccin / Nord / TokyoNight / Gruvbox]", state.settings_ui_theme)).block(
-        Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(style_13).title(" UI Color Theme (界面配色主题) "),
+    let lang_display = if state.settings_lang == "zh" { " 简体中文 (Chinese)  [Space 切换]" } else { " English  [Space Switch]" };
+    let p_13 = Paragraph::new(lang_display).block(
+        Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(style_13).title(" Interface Language (语言) "),
     );
-    f.render_widget(p_13, card4_chunks[1]);
+    f.render_widget(p_13, card4_chunks[0]);
 
-    // 14: Refresh Rate
+    // 14: UI Theme
     let style_14 = if state.settings_focus == 14 { Style::default().fg(Theme::BORDER_FOCUS).add_modifier(Modifier::BOLD) } else { Style::default().fg(Theme::BORDER) };
-    let p_14 = Paragraph::new(format!(" {} ms  [Space 切换 500 / 1000 / 2000 ms]", state.settings_refresh_ms)).block(
-        Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(style_14).title(" UI Refresh Interval (刷新频率) "),
+    let p_14 = Paragraph::new(format!(" {}  [Space 切换 Catppuccin / Nord / TokyoNight / Gruvbox]", state.settings_ui_theme)).block(
+        Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(style_14).title(" UI Color Theme (界面配色主题) "),
     );
-    f.render_widget(p_14, card4_chunks[2]);
+    f.render_widget(p_14, card4_chunks[1]);
+
+    // 15: Refresh Rate
+    let style_15 = if state.settings_focus == 15 { Style::default().fg(Theme::BORDER_FOCUS).add_modifier(Modifier::BOLD) } else { Style::default().fg(Theme::BORDER) };
+    let p_15 = Paragraph::new(format!(" {} ms  [Space 切换 500 / 1000 / 2000 ms]", state.settings_refresh_ms)).block(
+        Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(style_15).title(" UI Refresh Interval (刷新频率) "),
+    );
+    f.render_widget(p_15, card4_chunks[2]);
 
     // -------------------------------------------------------------------------
-    // BOTTOM BAR: Save Button (Focus Item: 15)
+    // BOTTOM BAR: Save Button (Focus Item: 16)
     // -------------------------------------------------------------------------
-    let save_btn_style = if state.settings_focus == 15 {
+    let save_btn_style = if state.settings_focus == 16 {
         Style::default().fg(Color::Rgb(17, 17, 27)).bg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD)
     } else {
         Style::default().fg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD)

@@ -391,14 +391,14 @@ impl App {
                     // Tab / Shift+Tab / [ / ] Navigation
                     KeyCode::Tab | KeyCode::Char(']') => {
                         if self.state.active_tab == Tab::Settings {
-                            self.state.settings_focus = (self.state.settings_focus + 1) % 12;
+                            self.state.settings_focus = (self.state.settings_focus + 1) % 17;
                         } else {
                             self.next_tab();
                         }
                     }
                     KeyCode::BackTab | KeyCode::Char('[') => {
                         if self.state.active_tab == Tab::Settings {
-                            self.state.settings_focus = if self.state.settings_focus == 0 { 11 } else { self.state.settings_focus - 1 };
+                            self.state.settings_focus = if self.state.settings_focus == 0 { 16 } else { self.state.settings_focus - 1 };
                         } else {
                             self.prev_tab();
                         }
@@ -424,25 +424,27 @@ impl App {
                             // Specialized Input Handling for Settings View
                             if self.state.active_tab == Tab::Settings {
                                 match key.code {
-                                    KeyCode::Up | KeyCode::Char('k') => self.state.settings_focus = if self.state.settings_focus == 0 { 15 } else { self.state.settings_focus - 1 },
-                                    KeyCode::Down | KeyCode::Char('j') => self.state.settings_focus = (self.state.settings_focus + 1) % 16,
+                                    KeyCode::Up | KeyCode::Char('k') => self.state.settings_focus = if self.state.settings_focus == 0 { 16 } else { self.state.settings_focus - 1 },
+                                    KeyCode::Down | KeyCode::Char('j') => self.state.settings_focus = (self.state.settings_focus + 1) % 17,
                                     KeyCode::Left | KeyCode::Char('h') => {
-                                        if self.state.settings_focus >= 8 && self.state.settings_focus <= 14 {
+                                        if self.state.settings_focus >= 8 && self.state.settings_focus <= 15 {
                                             self.state.settings_focus -= 8;
                                         } else {
                                             self.state.focus_zone = FocusZone::Sidebar;
                                         }
                                     }
                                     KeyCode::Right | KeyCode::Char('l') => {
-                                        if self.state.settings_focus <= 6 {
+                                        if self.state.settings_focus <= 7 {
                                             self.state.settings_focus += 8;
                                         }
                                     }
                                     KeyCode::Enter => {
-                                        if self.state.settings_focus == 15 {
+                                        if self.state.settings_focus == 12 {
+                                            let _ = self.action_tx.try_send(Action::DownloadCore);
+                                        } else if self.state.settings_focus == 16 {
                                             let _ = self.action_tx.try_send(Action::SaveSettings);
                                         } else {
-                                            self.state.settings_focus = (self.state.settings_focus + 1) % 16;
+                                            self.state.settings_focus = (self.state.settings_focus + 1) % 17;
                                         }
                                     }
                                     KeyCode::Char(' ') => {
@@ -472,19 +474,20 @@ impl App {
                                             },
                                             10 => self.state.settings_allow_lan = !self.state.settings_allow_lan,
                                             11 => self.state.settings_ipv6 = !self.state.settings_ipv6,
-                                            12 => self.state.settings_lang = if self.state.settings_lang == "zh" { "en".into() } else { "zh".into() },
-                                            13 => self.state.settings_ui_theme = match self.state.settings_ui_theme.as_str() {
+                                            12 => { let _ = self.action_tx.try_send(Action::DownloadCore); }
+                                            13 => self.state.settings_lang = if self.state.settings_lang == "zh" { "en".into() } else { "zh".into() },
+                                            14 => self.state.settings_ui_theme = match self.state.settings_ui_theme.as_str() {
                                                 "Catppuccin" => "Nord".into(),
                                                 "Nord" => "TokyoNight".into(),
                                                 "TokyoNight" => "Gruvbox".into(),
                                                 _ => "Catppuccin".into(),
                                             },
-                                            14 => self.state.settings_refresh_ms = match self.state.settings_refresh_ms {
+                                            15 => self.state.settings_refresh_ms = match self.state.settings_refresh_ms {
                                                 500 => 1000,
                                                 1000 => 2000,
                                                 _ => 500,
                                             },
-                                            15 => { let _ = self.action_tx.try_send(Action::SaveSettings); }
+                                            16 => { let _ = self.action_tx.try_send(Action::SaveSettings); }
                                             _ => {}
                                         }
                                     }
