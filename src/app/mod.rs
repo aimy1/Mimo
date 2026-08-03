@@ -889,7 +889,11 @@ impl App {
 
                                 // Auto-start Mihomo Core if not running
                                 if !crate::core::CoreProcess::is_running() {
-                                    let _ = crate::core::CoreProcess::start_with_config(&active.file_path);
+                                    if crate::core::CoreProcess::find_mihomo_binary().is_none() {
+                                        let _ = self.action_tx.try_send(Action::DownloadCore);
+                                    } else {
+                                        let _ = crate::core::CoreProcess::start_with_config(&active.file_path);
+                                    }
                                 }
                             }
                 }
@@ -1163,6 +1167,29 @@ impl App {
             Action::FetchConfig => {
                 self.fetch_config();
             }
+
+            Action::DownloadCore => {
+                self.state.push_toast("正在自动为您下载与安装 Mihomo 核心...".to_string());
+                let tx = self.action_tx.clone();
+                tokio::spawn(async move {
+                    let res = crate::core::CoreDownloader::download_and_install(|_msg| {}).await
+                        .map(|p| p.to_string_lossy().to_string())
+                        .map_err(|e| e.to_string());
+                    let _ = tx.send(Action::DownloadCoreResult(res)).await;
+                });
+            }
+
+            Action::DownloadCoreResult(res) => match res {
+                Ok(path) => {
+                    self.state.push_toast(format!("🎉 Mihomo 核心自动安装成功: {}", path));
+                    self.state.status_error = None;
+                    self.fetch_profiles();
+                    self.fetch_version();
+                }
+                Err(e) => {
+                    self.state.push_toast(format!("❌ Mihomo 自动下载失败: {}", e));
+                }
+            },
 
             Action::SaveSettings => {
                 let mut cfg = crate::config::Config::load().unwrap_or_default();

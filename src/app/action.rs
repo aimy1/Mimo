@@ -51,6 +51,8 @@ pub enum Action {
     StartCore,
     StopCore,
     RestartCore,
+    DownloadCore,
+    DownloadCoreResult(Result<String, String>),
     SaveSettings,
     // Navigation / Focus
     FocusNextPane,

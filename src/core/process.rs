@@ -14,6 +14,12 @@ pub struct CoreProcess;
 impl CoreProcess {
     /// Detect if Mihomo binary is installed in $PATH or standard Linux system locations
     pub fn find_mihomo_binary() -> Option<PathBuf> {
+        if let Ok(path) = crate::core::CoreDownloader::target_binary_path() {
+            if path.exists() {
+                return Some(path);
+            }
+        }
+
         let candidates = [
             "mihomo",
             "clash-meta",

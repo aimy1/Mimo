@@ -46,7 +46,7 @@ pub async fn handle_status(client: &MihomoClient) -> Result<()> {
 }
 
 pub async fn handle_core_action(action: &str) -> Result<()> {
-    match action {
+    match action.to_lowercase().as_str() {
         "start" => {
             println!("Starting Mihomo core service...");
             let index = ProfileManager::load_index()?;
@@ -68,6 +68,13 @@ pub async fn handle_core_action(action: &str) -> Result<()> {
             println!("Restarting Mihomo core service...");
             CoreProcess::restart()?;
             println!("\x1b[32mDone.\x1b[0m");
+        }
+        "download" | "install" => {
+            println!("Downloading & Installing Mihomo Core binary automatically...");
+            let path = crate::core::CoreDownloader::download_and_install(|msg| {
+                println!(" -> {}", msg);
+            }).await?;
+            println!("\x1b[32mSuccessfully installed Mihomo Core binary to {:?}\x1b[0m", path);
         }
         _ => anyhow::bail!("Unknown core action"),
     }
