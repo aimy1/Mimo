@@ -18,7 +18,7 @@ homepage: "https://github.com/aimy1/Mimo"
 license: "MIT"
 
 contents:
-  - src: "${BIN_PATH}"
+  - src: "mimo"
     dst: "/usr/bin/mimo"
     file_info:
       mode: 0755
@@ -44,9 +44,4 @@ overrides:
       - ca-certificates
 
 scripts:
-  postinstall: |
-    #!/bin/sh
-    # Grant CAP_NET_ADMIN capabilities to binary if setcap is available
-    if command -v setcap >/dev/null 2>&1; then
-      setcap cap_net_admin+ep /usr/bin/mimo 2>/dev/null || true
-    fi
+  postinstall: "packaging/postinstall.sh"

@@ -1,6 +1,9 @@
 /target
 /dist-release
 /dist
+/build
+/release-packages
+/mimo
 **/*.rs.bk
 *.user
 .idea/

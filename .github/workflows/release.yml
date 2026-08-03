@@ -86,8 +86,9 @@ jobs:
           mkdir -p build release-packages
 
           tar -xvf bin-artifacts/binary-x86_64/mimo-x86_64.tar.gz -C build/
-          VERSION=$VERSION ARCH=amd64 BIN_PATH=build/mimo-x86_64/mimo nfpm package --config packaging/nfpm.yaml --target release-packages/mimo_${VERSION}_amd64.deb
-          VERSION=$VERSION ARCH=x86_64 BIN_PATH=build/mimo-x86_64/mimo nfpm package --config packaging/nfpm.yaml --target release-packages/mimo-${VERSION}-1.x86_64.rpm
+          cp build/mimo-x86_64/mimo .
+          VERSION=$VERSION ARCH=amd64 nfpm package --config packaging/nfpm.yaml --target release-packages/mimo_${VERSION}_amd64.deb
+          VERSION=$VERSION ARCH=x86_64 nfpm package --config packaging/nfpm.yaml --target release-packages/mimo-${VERSION}-1.x86_64.rpm
           cp bin-artifacts/binary-x86_64/mimo-x86_64.tar.gz release-packages/mimo-${VERSION}-x86_64.tar.gz
 
       - name: Generate SHA256 Checksums
