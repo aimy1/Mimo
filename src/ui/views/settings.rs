@@ -1,306 +1,218 @@
 use crate::app::AppState;
-use crate::ui::i18n::{t, Language};
 use crate::ui::theme::Theme;
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
-    text::Span,
+    text::{Line, Span},
     widgets::{Block, BorderType, Borders, Paragraph},
     Frame,
 };
 
 pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
-    let lang = Language::from_str(&state.settings_lang);
 
     let main_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
+            Constraint::Length(3), // Top Summary Status Banner
             Constraint::Min(0),    // 4 Grouped Cards Grid
             Constraint::Length(3), // Bottom Save Button Bar
         ])
         .split(area);
 
+    // -------------------------------------------------------------------------
+    // TOP BANNER: Config Metadata & Core Runtime Status
+    // -------------------------------------------------------------------------
+    let core_ver = state.version.as_ref().map(|v| v.version.as_str()).unwrap_or("v1.19.29 (Meta)");
+    let status_str = format!(
+        " ⚙️  MIMO v0.2.0   |   Mihomo Core: {}   |   HTTP: {}   SOCKS: {}   MIXED: {}   |   Config: ~/.config/mimo/config.toml ",
+        core_ver, state.settings_http_port, state.settings_socks_port, state.settings_mixed_port
+    );
+    let top_banner = Paragraph::new(status_str)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
+                .border_style(Style::default().fg(Color::Rgb(137, 220, 235)))
+                .title(Span::styled(" 系统运行状态 & 配置文件路径 ", Style::default().fg(Color::Rgb(137, 220, 235)).add_modifier(Modifier::BOLD))),
+        )
+        .style(Style::default().fg(Color::Rgb(205, 214, 244)))
+        .alignment(Alignment::Center);
+    f.render_widget(top_banner, main_chunks[0]);
+
+    // -------------------------------------------------------------------------
+    // MIDDLE GRID: 2 Columns x 2 Cards
+    // -------------------------------------------------------------------------
     let grid_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
             Constraint::Percentage(50), // Left Column (Cards 1 & 2)
             Constraint::Percentage(50), // Right Column (Cards 3 & 4)
         ])
-        .split(main_chunks[0]);
+        .split(main_chunks[1]);
 
     let left_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Percentage(55), // Card 1: Network & Proxy Services (items 0..4)
-            Constraint::Percentage(45), // Card 2: DNS & Automation Services (items 5..7)
+            Constraint::Percentage(52), // Card 1: Network & Proxy Services (items 0..5)
+            Constraint::Percentage(48), // Card 2: DNS & Automation (items 6..10)
         ])
         .split(grid_chunks[0]);
 
     let right_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Percentage(55), // Card 3: Core & System Controls (items 8..11)
-            Constraint::Percentage(45), // Card 4: Preferences & Display Themes (items 12..14)
+            Constraint::Percentage(52), // Card 3: Core & System Controls (items 11..15)
+            Constraint::Percentage(48), // Card 4: Preferences & Themes (items 16..18)
         ])
         .split(grid_chunks[1]);
 
+    // Helper closure to build a row line
+    let make_row = |idx: usize, label: &str, value: &str, is_toggle: bool, is_btn: bool| -> Line<'static> {
+        let is_focus = state.settings_focus == idx;
+        let prefix = if is_focus { " ▶ " } else { "   " };
+        
+        let label_style = if is_focus {
+            Style::default().fg(Color::Rgb(249, 226, 175)).add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(Color::Rgb(205, 214, 244))
+        };
+
+        let val_style = if is_btn {
+            if is_focus {
+                Style::default().fg(Color::Rgb(17, 17, 27)).bg(Color::Rgb(203, 166, 247)).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(Color::Rgb(203, 166, 247)).add_modifier(Modifier::BOLD)
+            }
+        } else if is_toggle {
+            if value.contains("ON") || value.contains("开启") {
+                Style::default().fg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(Color::Rgb(147, 153, 178))
+            }
+        } else if is_focus {
+            Style::default().fg(Theme::BORDER_FOCUS).add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(Color::Rgb(147, 153, 178))
+        };
+
+        Line::from(vec![
+            Span::styled(prefix.to_string(), if is_focus { Style::default().fg(Theme::BORDER_FOCUS) } else { Style::default() }),
+            Span::styled(format!("{:<26}", label), label_style),
+            Span::styled(value.to_string(), val_style),
+        ])
+    };
+
     // -------------------------------------------------------------------------
-    // LEFT COLUMN TOP: Card 1 - 🌐 网络与代理服务 Network & Proxy Services
-    // Focus Items: 0 (API URL), 1 (Secret), 2 (HTTP Port), 3 (SOCKS Port), 4 (Test URL)
+    // CARD 1: 🌐 网络与代理端口 Network & Proxy Services (Items 0..5)
     // -------------------------------------------------------------------------
     let card1_block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
-        .border_style(Style::default().fg(Theme::BORDER))
+        .border_style(if (0..=5).contains(&state.settings_focus) { Style::default().fg(Theme::BORDER_FOCUS) } else { Style::default().fg(Theme::BORDER) })
         .title(Span::styled(" 🌐 网络与代理服务 Network & Proxy Services ", Style::default().fg(Color::Rgb(137, 220, 235)).add_modifier(Modifier::BOLD)));
 
-    let card1_inner = card1_block.inner(left_chunks[0]);
-    f.render_widget(card1_block, left_chunks[0]);
-
-    let card1_chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .margin(1)
-        .constraints([
-            Constraint::Length(3), // 0: API Base URL
-            Constraint::Length(3), // 1: Secret Token
-            Constraint::Length(3), // 2: HTTP Port
-            Constraint::Length(3), // 3: SOCKS Port
-            Constraint::Length(3), // 4: Mixed Port
-            Constraint::Length(3), // 5: Latency Test URL
-            Constraint::Min(0),
-        ])
-        .split(card1_inner);
-
-    // 0: API Base URL
-    let style_0 = if state.settings_focus == 0 { Style::default().fg(Theme::BORDER_FOCUS).add_modifier(Modifier::BOLD) } else { Style::default().fg(Theme::BORDER) };
-    let api_text = if state.settings_focus == 0 { format!(" {}_", state.settings_api_url) } else { format!(" {}", state.settings_api_url) };
-    let p_0 = Paragraph::new(api_text).block(
-        Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(style_0).title(" REST API Base URL "),
-    );
-    f.render_widget(p_0, card1_chunks[0]);
-
-    // 1: Secret Token
-    let style_1 = if state.settings_focus == 1 { Style::default().fg(Theme::BORDER_FOCUS).add_modifier(Modifier::BOLD) } else { Style::default().fg(Theme::BORDER) };
-    let secret_display = if state.settings_focus == 1 {
-        format!(" {}_", state.settings_secret)
+    let secret_val = if state.settings_focus == 1 {
+        format!("{}█", state.settings_secret)
     } else if state.settings_secret.is_empty() {
-        " None (未设置)".to_string()
+        "None (未设置)".to_string()
     } else {
-        format!(" {}", state.settings_secret)
+        state.settings_secret.clone()
     };
-    let p_1 = Paragraph::new(secret_display).block(
-        Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(style_1).title(" API Secret Token "),
-    );
-    f.render_widget(p_1, card1_chunks[1]);
 
-    // 2: HTTP Proxy Port
-    let style_2 = if state.settings_focus == 2 { Style::default().fg(Theme::BORDER_FOCUS).add_modifier(Modifier::BOLD) } else { Style::default().fg(Theme::BORDER) };
-    let http_port_text = if state.settings_focus == 2 { format!(" {}_", state.settings_http_port) } else { format!(" {}", state.settings_http_port) };
-    let p_2 = Paragraph::new(http_port_text).block(
-        Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(style_2).title(" HTTP System Proxy Port "),
-    );
-    f.render_widget(p_2, card1_chunks[2]);
+    let api_url_val = if state.settings_focus == 0 { format!("{}█", state.settings_api_url) } else { state.settings_api_url.clone() };
+    let http_val = if state.settings_focus == 2 { format!("{}█", state.settings_http_port) } else { state.settings_http_port.to_string() };
+    let socks_val = if state.settings_focus == 3 { format!("{}█", state.settings_socks_port) } else { state.settings_socks_port.to_string() };
+    let mixed_val = if state.settings_focus == 4 { format!("{}█", state.settings_mixed_port) } else { state.settings_mixed_port.to_string() };
+    let test_val = if state.settings_focus == 5 { format!("{}█", state.settings_test_url) } else { state.settings_test_url.clone() };
 
-    // 3: SOCKS Proxy Port
-    let style_3 = if state.settings_focus == 3 { Style::default().fg(Theme::BORDER_FOCUS).add_modifier(Modifier::BOLD) } else { Style::default().fg(Theme::BORDER) };
-    let socks_port_text = if state.settings_focus == 3 { format!(" {}_", state.settings_socks_port) } else { format!(" {}", state.settings_socks_port) };
-    let p_3 = Paragraph::new(socks_port_text).block(
-        Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(style_3).title(" SOCKS System Proxy Port "),
-    );
-    f.render_widget(p_3, card1_chunks[3]);
+    let card1_lines = vec![
+        make_row(0, "REST API Base URL", &api_url_val, false, false),
+        make_row(1, "API Secret Token", &secret_val, false, false),
+        make_row(2, "HTTP Proxy Port", &http_val, false, false),
+        make_row(3, "SOCKS Proxy Port", &socks_val, false, false),
+        make_row(4, "Mixed Proxy Port", &mixed_val, false, false),
+        make_row(5, "Latency Test URL", &test_val, false, false),
+    ];
 
-    // 4: Mixed Proxy Port
-    let style_4 = if state.settings_focus == 4 { Style::default().fg(Theme::BORDER_FOCUS).add_modifier(Modifier::BOLD) } else { Style::default().fg(Theme::BORDER) };
-    let mixed_port_text = if state.settings_focus == 4 { format!(" {}_", state.settings_mixed_port) } else { format!(" {}", state.settings_mixed_port) };
-    let p_4 = Paragraph::new(mixed_port_text).block(
-        Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(style_4).title(" Mixed Proxy Port (混合代理端口) "),
-    );
-    f.render_widget(p_4, card1_chunks[4]);
-
-    // 5: Latency Test URL
-    let style_5 = if state.settings_focus == 5 { Style::default().fg(Theme::BORDER_FOCUS).add_modifier(Modifier::BOLD) } else { Style::default().fg(Theme::BORDER) };
-    let test_url_text = if state.settings_focus == 5 { format!(" {}_", state.settings_test_url) } else { format!(" {}", state.settings_test_url) };
-    let p_5 = Paragraph::new(test_url_text).block(
-        Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(style_5).title(" Latency Test URL (节点测速 URL) "),
-    );
-    f.render_widget(p_5, card1_chunks[5]);
+    let p_card1 = Paragraph::new(card1_lines).block(card1_block);
+    f.render_widget(p_card1, left_chunks[0]);
 
     // -------------------------------------------------------------------------
-    // LEFT COLUMN BOTTOM: Card 2 - 🛡️ DNS 与系统自动化 DNS & Automation
-    // Focus Items: 6 (DNS Mode), 7 (Sniffer), 8 (TCP Concurrent), 9 (Auto SysProxy), 10 (Sub Auto Update)
+    // CARD 2: 🛡️ DNS 与高级自动化 DNS & Automation (Items 6..10)
     // -------------------------------------------------------------------------
     let card2_block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
-        .border_style(Style::default().fg(Theme::BORDER))
+        .border_style(if (6..=10).contains(&state.settings_focus) { Style::default().fg(Theme::BORDER_FOCUS) } else { Style::default().fg(Theme::BORDER) })
         .title(Span::styled(" 🛡️ DNS 与自动化服务 DNS & Automation ", Style::default().fg(Color::Rgb(166, 227, 161)).add_modifier(Modifier::BOLD)));
 
-    let card2_inner = card2_block.inner(left_chunks[1]);
-    f.render_widget(card2_block, left_chunks[1]);
-
-    let card2_chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .margin(1)
-        .constraints([
-            Constraint::Length(3), // 6: DNS Enhanced Mode
-            Constraint::Length(3), // 7: Sniffer TLS 嗅探
-            Constraint::Length(3), // 8: TCP Concurrent
-            Constraint::Length(3), // 9: Auto SysProxy on Launch
-            Constraint::Length(3), // 10: Sub Auto-Update Interval
-            Constraint::Min(0),
-        ])
-        .split(card2_inner);
-
-    // 6: DNS Enhanced Mode
-    let style_6 = if state.settings_focus == 6 { Style::default().fg(Theme::BORDER_FOCUS).add_modifier(Modifier::BOLD) } else { Style::default().fg(Theme::BORDER) };
-    let p_6 = Paragraph::new(format!(" {}  [Space 切换 fake-ip / redir-host]", state.settings_dns_mode)).block(
-        Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(style_6).title(" DNS Enhanced Mode (解析模式) "),
-    );
-    f.render_widget(p_6, card2_chunks[0]);
-
-    // 7: Sniffer TLS 嗅探
-    let style_7 = if state.settings_focus == 7 { Style::default().fg(Theme::BORDER_FOCUS).add_modifier(Modifier::BOLD) } else { Style::default().fg(Theme::BORDER) };
-    let sniff_display = if state.settings_sniffing { " ● 开启 ON  [Space 切换]" } else { " ○ 关闭 OFF  [Space 切换]" };
-    let p_7 = Paragraph::new(sniff_display).block(
-        Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(style_7).title(" TLS Sniffer (域名真实嗅探) "),
-    );
-    f.render_widget(p_7, card2_chunks[1]);
-
-    // 8: TCP Concurrent
-    let style_8 = if state.settings_focus == 8 { Style::default().fg(Theme::BORDER_FOCUS).add_modifier(Modifier::BOLD) } else { Style::default().fg(Theme::BORDER) };
-    let tcp_display = if state.settings_tcp_concurrent { " ● 开启 ON  [Space 切换]" } else { " ○ 关闭 OFF  [Space 切换]" };
-    let p_8 = Paragraph::new(tcp_display).block(
-        Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(style_8).title(" TCP Concurrent (TCP 并发连接) "),
-    );
-    f.render_widget(p_8, card2_chunks[2]);
-
-    // 9: Auto SysProxy on Launch
-    let style_9 = if state.settings_focus == 9 { Style::default().fg(Theme::BORDER_FOCUS).add_modifier(Modifier::BOLD) } else { Style::default().fg(Theme::BORDER) };
-    let sysproxy_display = if state.settings_auto_sysproxy { " ● 开启 ON  [Space 切换]" } else { " ○ 关闭 OFF  [Space 切换]" };
-    let p_9 = Paragraph::new(sysproxy_display).block(
-        Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(style_9).title(" Launch Auto SysProxy (启动自启代理) "),
-    );
-    f.render_widget(p_9, card2_chunks[3]);
-
-    // 10: Sub Auto-Update Interval
-    let style_10 = if state.settings_focus == 10 { Style::default().fg(Theme::BORDER_FOCUS).add_modifier(Modifier::BOLD) } else { Style::default().fg(Theme::BORDER) };
-    let sub_update_str = match state.settings_sub_update_hours {
-        0 => " 手动刷新 Manual  [Space 切换]".to_string(),
-        h => format!(" 每 {} 小时自动更新  [Space 切换]", h),
+    let dns_val = format!("{} [Space 切换]", state.settings_dns_mode);
+    let sniff_val = if state.settings_sniffing { "● 开启 ON [Space]" } else { "○ 关闭 OFF [Space]" };
+    let tcp_val = if state.settings_tcp_concurrent { "● 开启 ON [Space]" } else { "○ 关闭 OFF [Space]" };
+    let auto_sys_val = if state.settings_auto_sysproxy { "● 开启 ON [Space]" } else { "○ 关闭 OFF [Space]" };
+    let sub_val = match state.settings_sub_update_hours {
+        0 => "手动刷新 Manual [Space]".to_string(),
+        h => format!("每 {} 小时自动更新 [Space]", h),
     };
-    let p_10 = Paragraph::new(sub_update_str).block(
-        Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(style_10).title(" Sub Auto-Update (订阅自动更新周期) "),
-    );
-    f.render_widget(p_10, card2_chunks[4]);
+
+    let card2_lines = vec![
+        make_row(6, "DNS Enhanced Mode", &dns_val, false, false),
+        make_row(7, "TLS Sniffer 嗅探", sniff_val, true, false),
+        make_row(8, "TCP Concurrent 并发", tcp_val, true, false),
+        make_row(9, "Launch Auto SysProxy", auto_sys_val, true, false),
+        make_row(10, "Sub Auto-Update", &sub_val, false, false),
+    ];
+
+    let p_card2 = Paragraph::new(card2_lines).block(card2_block);
+    f.render_widget(p_card2, left_chunks[1]);
 
     // -------------------------------------------------------------------------
-    // RIGHT COLUMN TOP: Card 3 - ⚡ 核心与高级控制 Core & System Controls
-    // Focus Items: 11 (TUN Stack), 12 (Log Level), 13 (Allow LAN), 14 (IPv6), 15 (Download Core)
+    // CARD 3: ⚡ 核心服务与提权 Core & System Controls (Items 11..15)
     // -------------------------------------------------------------------------
     let card3_block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
-        .border_style(Style::default().fg(Theme::BORDER))
+        .border_style(if (11..=15).contains(&state.settings_focus) { Style::default().fg(Theme::BORDER_FOCUS) } else { Style::default().fg(Theme::BORDER) })
         .title(Span::styled(" ⚡ 核心与高级服务 Core & System Controls ", Style::default().fg(Color::Rgb(249, 226, 175)).add_modifier(Modifier::BOLD)));
 
-    let card3_inner = card3_block.inner(right_chunks[0]);
-    f.render_widget(card3_block, right_chunks[0]);
+    let stack_val = format!("{} [Space 切换]", state.settings_tun_stack);
+    let log_val = format!("{} [Space 切换]", state.settings_log_level);
+    let lan_val = if state.settings_allow_lan { "● 开启 ON [Space]" } else { "○ 关闭 OFF [Space]" };
+    let ipv6_val = if state.settings_ipv6 { "● 开启 ON [Space]" } else { "○ 关闭 OFF [Space]" };
+    let dl_core_val = "[ ⬇️ 自动下载 / 更新 Mihomo 核心 (Enter/Space) ]";
 
-    let card3_chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .margin(1)
-        .constraints([
-            Constraint::Length(3), // 11: TUN Stack
-            Constraint::Length(3), // 12: Log Level
-            Constraint::Length(3), // 13: Allow LAN
-            Constraint::Length(3), // 14: IPv6 Traffic
-            Constraint::Length(3), // 15: Download / Update Mihomo Core
-            Constraint::Min(0),
-        ])
-        .split(card3_inner);
+    let card3_lines = vec![
+        make_row(11, "TUN Network Stack", &stack_val, false, false),
+        make_row(12, "Log Level 日志等级", &log_val, false, false),
+        make_row(13, "Allow LAN 局域网共享", lan_val, true, false),
+        make_row(14, "IPv6 Support 支持", ipv6_val, true, false),
+        make_row(15, "Mihomo Core Manager", dl_core_val, false, true),
+    ];
 
-    // 11: TUN Stack
-    let style_11 = if state.settings_focus == 11 { Style::default().fg(Theme::BORDER_FOCUS).add_modifier(Modifier::BOLD) } else { Style::default().fg(Theme::BORDER) };
-    let p_11 = Paragraph::new(format!(" {}  [Space 切换 system / gvisor / lwip]", state.settings_tun_stack)).block(
-        Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(style_11).title(" TUN Network Stack (协议栈) "),
-    );
-    f.render_widget(p_11, card3_chunks[0]);
-
-    // 12: Log Level
-    let style_12 = if state.settings_focus == 12 { Style::default().fg(Theme::BORDER_FOCUS).add_modifier(Modifier::BOLD) } else { Style::default().fg(Theme::BORDER) };
-    let p_12 = Paragraph::new(format!(" {}  [Space 切换 info / warning / error / debug / silent]", state.settings_log_level)).block(
-        Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(style_12).title(" Log Level (日志等级) "),
-    );
-    f.render_widget(p_12, card3_chunks[1]);
-
-    // 13: Allow LAN
-    let style_13 = if state.settings_focus == 13 { Style::default().fg(Theme::BORDER_FOCUS).add_modifier(Modifier::BOLD) } else { Style::default().fg(Theme::BORDER) };
-    let lan_display = if state.settings_allow_lan { " ● 开启 ON  [Space 切换]" } else { " ○ 关闭 OFF  [Space 切换]" };
-    let p_13 = Paragraph::new(lan_display).block(
-        Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(style_13).title(" Allow LAN (局域网设备共享) "),
-    );
-    f.render_widget(p_13, card3_chunks[2]);
-
-    // 14: IPv6 Traffic
-    let style_14 = if state.settings_focus == 14 { Style::default().fg(Theme::BORDER_FOCUS).add_modifier(Modifier::BOLD) } else { Style::default().fg(Theme::BORDER) };
-    let ipv6_display = if state.settings_ipv6 { " ● 开启 ON  [Space 切换]" } else { " ○ 关闭 OFF  [Space 切换]" };
-    let p_14 = Paragraph::new(ipv6_display).block(
-        Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(style_14).title(" IPv6 Support (IPv6 流量控制) "),
-    );
-    f.render_widget(p_14, card3_chunks[3]);
-
-    // 15: Download / Update Mihomo Core Binary
-    let style_15 = if state.settings_focus == 15 { Style::default().fg(Color::Rgb(17, 17, 27)).bg(Color::Rgb(203, 166, 247)).add_modifier(Modifier::BOLD) } else { Style::default().fg(Color::Rgb(203, 166, 247)) };
-    let p_15 = Paragraph::new(" ⬇️  下载 / 更新 Mihomo 核心 (Download/Update Core)  [Space / Enter 触发]").block(
-        Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(if state.settings_focus == 15 { Style::default().fg(Theme::BORDER_FOCUS) } else { Style::default().fg(Theme::BORDER) }).title(" Mihomo Binary Manager (核心版本管理) "),
-    ).style(style_15);
-    f.render_widget(p_15, card3_chunks[4]);
+    let p_card3 = Paragraph::new(card3_lines).block(card3_block);
+    f.render_widget(p_card3, right_chunks[0]);
 
     // -------------------------------------------------------------------------
-    // RIGHT COLUMN BOTTOM: Card 4 - 🎨 界面与偏好风格 Preferences & Themes
-    // Focus Items: 16 (Language), 17 (UI Theme), 18 (Refresh Rate)
+    // CARD 4: 🎨 界面与偏好风格 Preferences & Themes (Items 16..18)
     // -------------------------------------------------------------------------
     let card4_block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
-        .border_style(Style::default().fg(Theme::BORDER))
+        .border_style(if (16..=18).contains(&state.settings_focus) { Style::default().fg(Theme::BORDER_FOCUS) } else { Style::default().fg(Theme::BORDER) })
         .title(Span::styled(" 🎨 界面与偏好风格 Preferences & Display ", Style::default().fg(Color::Rgb(203, 166, 247)).add_modifier(Modifier::BOLD)));
 
-    let card4_inner = card4_block.inner(right_chunks[1]);
-    f.render_widget(card4_block, right_chunks[1]);
+    let lang_val = if state.settings_lang == "zh" { "简体中文 [Space]" } else { "English [Space]" };
+    let theme_val = format!("{} [Space]", state.settings_ui_theme);
+    let refresh_val = format!("{} ms [Space]", state.settings_refresh_ms);
 
-    let card4_chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .margin(1)
-        .constraints([
-            Constraint::Length(3), // 16: Language
-            Constraint::Length(3), // 17: UI Theme
-            Constraint::Length(3), // 18: Refresh Rate
-            Constraint::Min(0),
-        ])
-        .split(card4_inner);
+    let card4_lines = vec![
+        make_row(16, "Interface Language", lang_val, false, false),
+        make_row(17, "UI Color Theme", &theme_val, false, false),
+        make_row(18, "UI Refresh Interval", &refresh_val, false, false),
+    ];
 
-    // 16: Language
-    let style_16 = if state.settings_focus == 16 { Style::default().fg(Theme::BORDER_FOCUS).add_modifier(Modifier::BOLD) } else { Style::default().fg(Theme::BORDER) };
-    let lang_display = if state.settings_lang == "zh" { " 简体中文 (Chinese)  [Space 切换]" } else { " English  [Space Switch]" };
-    let p_16 = Paragraph::new(lang_display).block(
-        Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(style_16).title(" Interface Language (语言) "),
-    );
-    f.render_widget(p_16, card4_chunks[0]);
-
-    // 17: UI Theme
-    let style_17 = if state.settings_focus == 17 { Style::default().fg(Theme::BORDER_FOCUS).add_modifier(Modifier::BOLD) } else { Style::default().fg(Theme::BORDER) };
-    let p_17 = Paragraph::new(format!(" {}  [Space 切换 Catppuccin / Nord / TokyoNight / Gruvbox]", state.settings_ui_theme)).block(
-        Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(style_17).title(" UI Color Theme (界面配色主题) "),
-    );
-    f.render_widget(p_17, card4_chunks[1]);
-
-    // 18: Refresh Rate
-    let style_18 = if state.settings_focus == 18 { Style::default().fg(Theme::BORDER_FOCUS).add_modifier(Modifier::BOLD) } else { Style::default().fg(Theme::BORDER) };
-    let p_18 = Paragraph::new(format!(" {} ms  [Space 切换 500 / 1000 / 2000 ms]", state.settings_refresh_ms)).block(
-        Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(style_18).title(" UI Refresh Interval (刷新频率) "),
-    );
-    f.render_widget(p_18, card4_chunks[2]);
+    let p_card4 = Paragraph::new(card4_lines).block(card4_block);
+    f.render_widget(p_card4, right_chunks[1]);
 
     // -------------------------------------------------------------------------
     // BOTTOM BAR: Save Button (Focus Item: 19)
@@ -311,15 +223,22 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         Style::default().fg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD)
     };
 
-    let save_block = Paragraph::new(t("settings_save_btn", lang))
+    let save_text = if state.settings_focus == 19 {
+        " ▶ [ 💾 保存所有系统设置至 ~/.config/mimo/config.toml (按 Enter 保存) ] ◀ "
+    } else {
+        " [ 💾 保存所有系统设置 (Save All Settings) ] "
+    };
+
+    let save_block = Paragraph::new(save_text)
         .block(
             Block::default()
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded)
-                .border_style(Style::default().fg(Theme::ACTIVE_GREEN)),
+                .border_style(Style::default().fg(if state.settings_focus == 19 { Theme::BORDER_FOCUS } else { Theme::ACTIVE_GREEN })),
         )
         .style(save_btn_style)
-        .alignment(ratatui::layout::Alignment::Center);
+        .alignment(Alignment::Center);
 
-    f.render_widget(save_block, main_chunks[1]);
+    f.render_widget(save_block, main_chunks[2]);
 }
+
