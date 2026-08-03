@@ -49,7 +49,9 @@ jobs:
       - name: Install Cross Tool (if needed)
         if: matrix.cross
         run: |
-          cargo install cross --git https://github.com/cross-rs/cross
+          mkdir -p ~/.cargo/bin
+          curl -sSL https://github.com/cross-rs/cross/releases/download/v0.2.5/cross-x86_64-unknown-linux-musl.tar.gz | tar -xz -C ~/.cargo/bin
+          chmod +x ~/.cargo/bin/cross
 
       - name: Build Release Binary
         run: |
@@ -73,7 +75,7 @@ jobs:
           path: dist/mimo-${{ matrix.arch }}.tar.gz
 
   # ---------------------------------------------------------------------------
-  # 2. Package DEB, RPM & AppImage via NFPM
+  # 2. Package DEB, RPM & Assets via NFPM
   # ---------------------------------------------------------------------------
   package:
     name: Build Multi-Distro Packages
@@ -88,12 +90,12 @@ jobs:
         with:
           path: bin-artifacts
 
-      - name: Install NFPM & AppImage Tools
+      - name: Install NFPM Tool
         run: |
-          echo "Installing NFPM..."
-          echo "deb [trusted=yes] https://repo.goreleaser.com/apt/ /" | sudo tee /etc/apt/sources.list.d/goreleaser.list
-          sudo apt-get update
-          sudo apt-get install -y nfpm
+          mkdir -p bin
+          curl -sSL https://github.com/goreleaser/nfpm/releases/download/v2.41.0/nfpm_2.41.0_Linux_x86_64.tar.gz | tar -xz -C bin nfpm
+          chmod +x bin/nfpm
+          echo "$GITHUB_WORKSPACE/bin" >> $GITHUB_PATH
 
       - name: Extract Binaries for Packaging
         run: |
