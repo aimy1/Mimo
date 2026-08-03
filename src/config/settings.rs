@@ -12,6 +12,12 @@ pub struct Settings {
     pub http_port: u16,
     pub socks_port: u16,
     pub test_url: String,
+    #[serde(default = "default_mixed_port")]
+    pub mixed_port: u16,
+    #[serde(default = "default_true")]
+    pub sniffing: bool,
+    #[serde(default = "default_false")]
+    pub tcp_concurrent: bool,
     #[serde(default = "default_tun_stack")]
     pub tun_stack: String,
     #[serde(default = "default_log_level")]
@@ -30,6 +36,7 @@ pub struct Settings {
     pub ui_theme: String,
 }
 
+fn default_mixed_port() -> u16 { 7897 }
 fn default_tun_stack() -> String { "system".to_string() }
 fn default_log_level() -> String { "info".to_string() }
 fn default_dns_mode() -> String { "fake-ip".to_string() }
@@ -47,6 +54,9 @@ impl Default for Settings {
             refresh_interval_ms: 1000,
             http_port: 7890,
             socks_port: 7891,
+            mixed_port: 7897,
+            sniffing: true,
+            tcp_concurrent: false,
             test_url: "http://www.gstatic.com/generate_204".to_string(),
             tun_stack: "system".to_string(),
             log_level: "info".to_string(),

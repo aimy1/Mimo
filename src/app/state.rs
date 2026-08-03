@@ -86,6 +86,9 @@ pub struct AppState {
     pub settings_refresh_ms: u64,
     pub settings_http_port: u16,
     pub settings_socks_port: u16,
+    pub settings_mixed_port: u16,
+    pub settings_sniffing: bool,
+    pub settings_tcp_concurrent: bool,
     pub settings_test_url: String,
     pub settings_tun_stack: String,
     pub settings_log_level: String,
@@ -95,7 +98,7 @@ pub struct AppState {
     pub settings_auto_sysproxy: bool,
     pub settings_sub_update_hours: u32,
     pub settings_ui_theme: String,
-    pub settings_focus: usize, // 0..=15 index
+    pub settings_focus: usize, // index
 
     // API Data
     pub version: Option<VersionInfo>,
@@ -204,6 +207,9 @@ impl Default for AppState {
             settings_refresh_ms: config.refresh_interval_ms,
             settings_http_port: config.http_port,
             settings_socks_port: config.socks_port,
+            settings_mixed_port: config.mixed_port,
+            settings_sniffing: config.sniffing,
+            settings_tcp_concurrent: config.tcp_concurrent,
             settings_test_url: config.test_url.clone(),
             settings_tun_stack: config.tun_stack.clone(),
             settings_log_level: config.log_level.clone(),
