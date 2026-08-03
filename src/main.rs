@@ -23,7 +23,7 @@ use std::io;
 #[derive(Parser)]
 #[command(name = "mimo")]
 #[command(author = "aisaniya")]
-#[command(version = "0.2.0")]
+#[command(version = env!("CARGO_PKG_VERSION"))]
 #[command(about = "Minimal Mihomo Manager - Modern, keyboard-driven Linux TUI for Mihomo/Clash Meta", long_about = None)]
 struct Cli {
     #[command(subcommand)]

@@ -39,7 +39,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         ]),
         Line::from(vec![
             Span::styled("  ⚡ Minimalist Mihomo Manager ", Style::default().fg(Color::Rgb(245, 194, 231)).add_modifier(Modifier::BOLD)),
-            Span::styled(" v0.2.0", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(concat!(" v", env!("CARGO_PKG_VERSION")), Style::default().fg(Theme::TEXT_MUTED)),
         ]),
     ];
 
@@ -93,7 +93,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         ]),
         Line::from(vec![
             Span::styled(label_ver, Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled("v0.2.0 (Rust 2021 Edition)", Style::default().fg(Theme::ACTIVE_GREEN)),
+            Span::styled(format!("v{} (Rust 2024 Edition)", env!("CARGO_PKG_VERSION")), Style::default().fg(Theme::ACTIVE_GREEN)),
         ]),
         Line::from(vec![
             Span::styled(label_core, Style::default().fg(Theme::TEXT_MUTED)),

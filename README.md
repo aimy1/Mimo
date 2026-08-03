@@ -3,7 +3,7 @@
 <div align="center">
 
 ![Author](https://img.shields.io/badge/Author-aisaniya-purple.svg?style=for-the-badge)
-![Rust](https://img.shields.io/badge/Language-Rust--2021-orange.svg?style=for-the-badge&logo=rust)
+![Rust](https://img.shields.io/badge/Language-Rust--2024-orange.svg?style=for-the-badge&logo=rust)
 ![Ratatui](https://img.shields.io/badge/UI-Ratatui%20v0.29-blue.svg?style=for-the-badge)
 ![Core](https://img.shields.io/badge/Core-Mihomo%20%2F%20Clash%20Meta-red.svg?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)

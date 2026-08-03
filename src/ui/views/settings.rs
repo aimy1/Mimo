@@ -24,8 +24,8 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     // -------------------------------------------------------------------------
     let core_ver = state.version.as_ref().map(|v| v.version.as_str()).unwrap_or("v1.19.29 (Meta)");
     let status_str = format!(
-        " ⚙️  MIMO v0.2.0   |   Mihomo Core: {}   |   HTTP: {}   SOCKS: {}   MIXED: {}   |   Config: ~/.config/mimo/config.toml ",
-        core_ver, state.settings_http_port, state.settings_socks_port, state.settings_mixed_port
+        " ⚙️  MIMO v{}   |   Mihomo Core: {}   |   HTTP: {}   SOCKS: {}   MIXED: {}   |   Config: ~/.config/mimo/config.toml ",
+        env!("CARGO_PKG_VERSION"), core_ver, state.settings_http_port, state.settings_socks_port, state.settings_mixed_port
     );
     let top_banner = Paragraph::new(status_str)
         .block(
