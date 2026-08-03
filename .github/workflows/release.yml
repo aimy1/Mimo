@@ -59,6 +59,7 @@ jobs:
 
       - name: Build Release Binary
         run: |
+          export PKG_CONFIG_ALLOW_CROSS=1
           if [ "${{ matrix.arch }}" = "aarch64" ]; then
             export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
           elif [ "${{ matrix.arch }}" = "armv7" ]; then
@@ -85,6 +86,7 @@ jobs:
   package:
     name: Build Multi-Distro Packages
     needs: build-matrix
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -100,34 +102,35 @@ jobs:
           curl -sSL https://github.com/goreleaser/nfpm/releases/download/v2.41.0/nfpm_2.41.0_Linux_x86_64.tar.gz | tar -xz nfpm
           sudo mv nfpm /usr/local/bin/
 
-      - name: Extract Binaries for Packaging
-        run: |
-          mkdir -p build
-          tar -xvf bin-artifacts/binary-x86_64/mimo-x86_64.tar.gz -C build/
-          tar -xvf bin-artifacts/binary-aarch64/mimo-aarch64.tar.gz -C build/
-          tar -xvf bin-artifacts/binary-armv7/mimo-armv7.tar.gz -C build/
-
-      - name: Build DEB & RPM via NFPM
+      - name: Build DEB & RPM Packages
         run: |
           if [ "$GITHUB_REF_TYPE" = "tag" ]; then
             VERSION="${GITHUB_REF_NAME#v}"
           else
             VERSION="1.3.1"
           fi
-          mkdir -p release-packages
-          
+          mkdir -p build release-packages
+
           # x86_64 / amd64
-          VERSION=$VERSION ARCH=amd64 BIN_PATH=build/mimo-x86_64/mimo nfpm package --config packaging/nfpm.yaml --target release-packages/mimo_${VERSION}_amd64.deb
-          VERSION=$VERSION ARCH=x86_64 BIN_PATH=build/mimo-x86_64/mimo nfpm package --config packaging/nfpm.yaml --target release-packages/mimo-${VERSION}-1.x86_64.rpm
+          if [ -f bin-artifacts/binary-x86_64/mimo-x86_64.tar.gz ]; then
+            tar -xvf bin-artifacts/binary-x86_64/mimo-x86_64.tar.gz -C build/
+            VERSION=$VERSION ARCH=amd64 BIN_PATH=build/mimo-x86_64/mimo nfpm package --config packaging/nfpm.yaml --target release-packages/mimo_${VERSION}_amd64.deb
+            VERSION=$VERSION ARCH=x86_64 BIN_PATH=build/mimo-x86_64/mimo nfpm package --config packaging/nfpm.yaml --target release-packages/mimo-${VERSION}-1.x86_64.rpm
+            cp bin-artifacts/binary-x86_64/mimo-x86_64.tar.gz release-packages/mimo-${VERSION}-x86_64.tar.gz
+          fi
 
           # aarch64 / arm64
-          VERSION=$VERSION ARCH=arm64 BIN_PATH=build/mimo-aarch64/mimo nfpm package --config packaging/nfpm.yaml --target release-packages/mimo_${VERSION}_arm64.deb
-          VERSION=$VERSION ARCH=aarch64 BIN_PATH=build/mimo-aarch64/mimo nfpm package --config packaging/nfpm.yaml --target release-packages/mimo-${VERSION}-1.aarch64.rpm
+          if [ -f bin-artifacts/binary-aarch64/mimo-aarch64.tar.gz ]; then
+            tar -xvf bin-artifacts/binary-aarch64/mimo-aarch64.tar.gz -C build/
+            VERSION=$VERSION ARCH=arm64 BIN_PATH=build/mimo-aarch64/mimo nfpm package --config packaging/nfpm.yaml --target release-packages/mimo_${VERSION}_arm64.deb
+            VERSION=$VERSION ARCH=aarch64 BIN_PATH=build/mimo-aarch64/mimo nfpm package --config packaging/nfpm.yaml --target release-packages/mimo-${VERSION}-1.aarch64.rpm
+            cp bin-artifacts/binary-aarch64/mimo-aarch64.tar.gz release-packages/mimo-${VERSION}-aarch64.tar.gz
+          fi
 
-          # Move tar.gz binaries into release-packages
-          cp bin-artifacts/binary-x86_64/mimo-x86_64.tar.gz release-packages/mimo-${VERSION}-x86_64.tar.gz
-          cp bin-artifacts/binary-aarch64/mimo-aarch64.tar.gz release-packages/mimo-${VERSION}-aarch64.tar.gz
-          cp bin-artifacts/binary-armv7/mimo-armv7.tar.gz release-packages/mimo-${VERSION}-armv7.tar.gz
+          # armv7
+          if [ -f bin-artifacts/binary-armv7/mimo-armv7.tar.gz ]; then
+            cp bin-artifacts/binary-armv7/mimo-armv7.tar.gz release-packages/mimo-${VERSION}-armv7.tar.gz
+          fi
 
       - name: Generate SHA256 Checksums
         run: |
@@ -146,6 +149,7 @@ jobs:
   release:
     name: Create GitHub Release
     needs: package
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
