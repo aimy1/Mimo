@@ -194,6 +194,38 @@ impl ProfileManager {
             }
         }
 
+        if result.is_empty() {
+            let default_path = profiles_dir.join("default.yaml");
+            let default_yaml = r#"port: 7890
+socks-port: 7891
+mixed-port: 7897
+allow-lan: true
+mode: rule
+log-level: info
+external-controller: 127.0.0.1:9090
+secret: ""
+proxies: []
+proxy-groups:
+  - name: GLOBAL
+    type: select
+    proxies:
+      - DIRECT
+rules:
+  - MATCH,DIRECT
+"#;
+            let _ = fs::write(&default_path, default_yaml);
+            result.push(ProfileItem {
+                id: "default".to_string(),
+                name: "default".to_string(),
+                url: None,
+                file_path: default_path,
+                is_active: true,
+                updated_at: None,
+                node_count: 0,
+            });
+            let _ = Self::set_active_profile("default");
+        }
+
         result.sort_by(|a, b| a.name.cmp(&b.name));
         Ok(result)
     }

@@ -5,7 +5,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, BorderType, Borders, Paragraph, Sparkline, Wrap},
+    widgets::{Block, BorderType, Borders, Paragraph, Sparkline},
     Frame,
 };
 
@@ -15,14 +15,15 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     let main_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(8), // Top Section: Core Diagnostics (Left) & System Info (Right)
-            Constraint::Length(7), // Middle 1 Section: Beautified Site & Service Connectivity Testing
-            Constraint::Length(7), // Middle 2 Section: Realtime Traffic Sparklines
-            Constraint::Min(0),    // Footer Navigation Guide
+            Constraint::Length(7), // 1. Core Diagnostics (Left) & System Info (Right)
+            Constraint::Length(5), // 2. Clean Site Connectivity Matrix
+            Constraint::Min(6),    // 3. Realtime Traffic Sparklines
         ])
         .split(area);
 
-    // 1. Top Section: 50% Left Core Diagnostics, 50% Right System Info
+    // -------------------------------------------------------------------------
+    // 1. TOP SECTION: Core Diagnostics (Left) & System Environment (Right)
+    // -------------------------------------------------------------------------
     let top_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
@@ -31,87 +32,63 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         ])
         .split(main_chunks[0]);
 
-    // 1A. Left Status & Diagnostics Card
+    // 1A. Core Diagnostics Card
     let version_str = state
         .version
         .as_ref()
-        .map(|v| format!("v{} (Meta: {})", v.version, v.meta))
-        .unwrap_or_else(|| "Connecting...".into());
-
-    let mode_str = state
-        .config
-        .as_ref()
-        .and_then(|c| c.mode.clone())
-        .unwrap_or_else(|| "Unknown".into());
+        .map(|v| format!("v{} ({})", v.version, v.meta))
+        .unwrap_or_else(|| "Offline".into());
 
     let active_node = state
         .proxies_resp
         .as_ref()
         .and_then(|r| r.proxies.get("GLOBAL"))
         .and_then(|g| g.now.clone())
-        .unwrap_or_else(|| "Direct / Unknown".into());
+        .unwrap_or_else(|| "DIRECT".into());
 
-    let (enabled_str, disabled_str, checking_str) = match lang {
-        Language::Zh => ("● 已开启 ON", "○ 已关闭 OFF", "检测中..."),
-        Language::En => ("● ENABLED", "○ DISABLED", "Checking..."),
+    let checking_str = match lang {
+        Language::Zh => "检测中...",
+        Language::En => "Checking...",
     };
 
-    let sys_proxy_str = if state.is_sysproxy_enabled {
-        Span::styled(enabled_str, Style::default().fg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD))
+    let (label_ver, label_ip, label_node, label_mode, title_status) = match lang {
+        Language::Zh => ("内核版本: ", "出口公网: ", "当前节点: ", "运行状态: ", " 🌐 核心与网络出口 "),
+        Language::En => ("Core Ver : ", "Outbound : ", "Active   : ", "Status   : ", " 🌐 Core & Outbound "),
+    };
+
+    let tun_cap_str = if state.is_tun_enabled {
+        if state.is_tun_privileged { "TUN: ON (OK)" } else { "TUN: ON (No-Priv)" }
     } else {
-        Span::styled(disabled_str, Style::default().fg(Theme::TEXT_MUTED))
+        "TUN: OFF"
     };
 
-    let tun_str = if state.is_tun_enabled {
-        Span::styled(enabled_str, Style::default().fg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD))
-    } else {
-        Span::styled(disabled_str, Style::default().fg(Theme::TEXT_MUTED))
-    };
+    let mode_str = state
+        .config
+        .as_ref()
+        .and_then(|c| c.mode.clone())
+        .unwrap_or_else(|| "Rule".into());
 
-    let cap_str = if state.is_tun_privileged {
-        Span::styled(" (cap_net_admin: OK)", Style::default().fg(Theme::TEXT_MUTED))
-    } else {
-        let req_str = match lang {
-            Language::Zh => " (需 root/cap_net_admin 权限)",
-            Language::En => " (Requires root or cap_net_admin)",
-        };
-        Span::styled(req_str, Style::default().fg(Color::Rgb(243, 139, 168)))
-    };
-
-    let ip_str = state
-        .outbound_ip
-        .as_deref()
-        .unwrap_or(checking_str);
-
-    let (label_ver, label_ip, label_mode, label_sys, label_tun, label_node, title_status) = match lang {
-        Language::Zh => (" 核心版本 Core : ", " 出口公网 IP   : ", " 运行模式 Mode : ", "系统代理: ", " TUN 虚拟网卡  : ", " GLOBAL 节点  : ", " 🌐 核心与网络出口诊断 Status & Outbound "),
-        Language::En => (" Core Version  : ", " Outbound IP   : ", " Mode         : ", "SysProxy: ", " TUN Adapter   : ", " GLOBAL Node   : ", " 🌐 Status & Outbound Diagnostics "),
-    };
+    let status_summary = format!("Mode: {} | {}", mode_str, tun_cap_str);
 
     let status_text = vec![
         Line::from(vec![
-            Span::styled(label_ver, Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled(version_str, Style::default().fg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD)),
+            Span::styled(format!(" {}", label_ver), Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(version_str, Style::default().fg(Theme::ACTIVE_GREEN)),
         ]),
         Line::from(vec![
-            Span::styled(label_ip, Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled(ip_str, Style::default().fg(Color::Rgb(249, 226, 175)).add_modifier(Modifier::BOLD)),
+            Span::styled(format!(" {}", label_ip), Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(
+                state.outbound_ip.as_deref().unwrap_or(checking_str),
+                Style::default().fg(Theme::WARN_YELLOW).add_modifier(Modifier::BOLD),
+            ),
         ]),
         Line::from(vec![
-            Span::styled(label_mode, Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled(mode_str, Style::default().fg(Theme::MODE_BADGE).add_modifier(Modifier::BOLD)),
-            Span::raw(" | "),
-            Span::styled(label_sys, Style::default().fg(Theme::TEXT_MUTED)),
-            sys_proxy_str,
+            Span::styled(format!(" {}", label_node), Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(active_node, Style::default().fg(Theme::SECONDARY).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
-            Span::styled(label_tun, Style::default().fg(Theme::TEXT_MUTED)),
-            tun_str,
-            cap_str,
-        ]),
-        Line::from(vec![
-            Span::styled(label_node, Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled(active_node, Style::default().fg(Color::Rgb(137, 220, 235)).add_modifier(Modifier::BOLD)),
+            Span::styled(format!(" {}", label_mode), Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(status_summary, Style::default().fg(Theme::TEXT_SUB)),
         ]),
     ];
 
@@ -124,7 +101,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     );
     f.render_widget(status_block, top_chunks[0]);
 
-    // 1B. Right System Information Card
+    // 1B. System Environment Card
     let ram_used = format_bytes(state.memory_used_bytes);
     let ram_total = format_bytes(state.memory_total_bytes);
     let ram_percent = if state.memory_total_bytes > 0 {
@@ -133,31 +110,32 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         0
     };
 
-    let (label_host, label_kernel, label_cpu, label_ram, label_device, title_sysinfo, cores_str, active_str, inactive_str) = match lang {
-        Language::Zh => (" 主机名称 Hostname : ", " Linux 内核 Kernel: ", " 处理器 CPU 架构  : ", " 物理内存 RAM     : ", " TUN 网卡设备     : ", " 💻 详细系统环境信息 System Info ", "核心", "UP 活跃", "DOWN 停用"),
-        Language::En => (" Hostname          : ", " Linux Kernel      : ", " CPU Architecture  : ", " Memory RAM        : ", " TUN Device        : ", " 💻 System Information ", "Cores", "UP Active", "DOWN Inactive"),
+    let (label_host, label_cpu, label_ram, label_device, title_sysinfo, cores_str) = match lang {
+        Language::Zh => ("主机环境: ", "处理器  : ", "内存占用: ", "网卡状态: ", " 💻 系统硬件与环境 ", "核"),
+        Language::En => ("Host OS : ", "CPU     : ", "Memory  : ", "Device  : ", " 💻 System Info ", "cores"),
     };
+
+    let host_kernel = format!("{} ({})", state.sys_hostname, state.sys_kernel);
+    let cpu_info = format!("{} ({} {})", state.sys_cpu_brand.trim(), state.sys_cpu_cores, cores_str);
+    let ram_info = format!("{} / {} ({}%)", ram_used, ram_total, ram_percent);
+    let iface_info = format!("{} ({})", state.tun_interface_name, if state.is_tun_interface_up { "UP" } else { "DOWN" });
 
     let sys_info_text = vec![
         Line::from(vec![
-            Span::styled(label_host, Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled(&state.sys_hostname, Style::default().fg(Color::Rgb(203, 166, 247)).add_modifier(Modifier::BOLD)),
+            Span::styled(format!(" {}", label_host), Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(host_kernel, Style::default().fg(Theme::PRIMARY)),
         ]),
         Line::from(vec![
-            Span::styled(label_kernel, Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled(&state.sys_kernel, Style::default().fg(Color::Rgb(137, 220, 235)).add_modifier(Modifier::BOLD)),
+            Span::styled(format!(" {}", label_cpu), Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(cpu_info, Style::default().fg(Theme::TEXT_MAIN)),
         ]),
         Line::from(vec![
-            Span::styled(label_cpu, Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled(format!("{} ({} {})", state.sys_cpu_brand.trim(), state.sys_cpu_cores, cores_str), Style::default().fg(Color::Rgb(250, 179, 135)).add_modifier(Modifier::BOLD)),
+            Span::styled(format!(" {}", label_ram), Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(ram_info, Style::default().fg(Theme::ACTIVE_GREEN)),
         ]),
         Line::from(vec![
-            Span::styled(label_ram, Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled(format!("{} / {} ({}%)", ram_used, ram_total, ram_percent), Style::default().fg(Color::Rgb(166, 227, 161)).add_modifier(Modifier::BOLD)),
-        ]),
-        Line::from(vec![
-            Span::styled(label_device, Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled(format!("{} ({})", state.tun_interface_name, if state.is_tun_interface_up { active_str } else { inactive_str }), Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(format!(" {}", label_device), Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(iface_info, Style::default().fg(Theme::TEXT_SUB)),
         ]),
     ];
 
@@ -170,27 +148,12 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     );
     f.render_widget(sys_info_block, top_chunks[1]);
 
-    // 2. Middle 1 Section: Beautified Site & Service Connectivity Testing Cards Grid
+    // -------------------------------------------------------------------------
+    // 2. MIDDLE SECTION: Clean Site Connectivity Testing Matrix (No Nested Boxes)
+    // -------------------------------------------------------------------------
     let title_site = match lang {
-        Language::Zh => " 🌐 常用网站与服务连通性测试 Site Connectivity [按 't' 键 / 点击刷新] ",
-        Language::En => " 🌐 Site & Service Connectivity [Press 't' / Click Refresh] ",
-    };
-
-    let site_outer_block = Block::default()
-        .borders(Borders::ALL)
-        .border_type(BorderType::Rounded)
-        .border_style(Style::default().fg(Color::Rgb(203, 166, 247)))
-        .title(Span::styled(
-            title_site,
-            Style::default().fg(Color::Rgb(203, 166, 247)).add_modifier(Modifier::BOLD),
-        ));
-    f.render_widget(site_outer_block, main_chunks[1]);
-
-    let inner_site_area = Rect {
-        x: main_chunks[1].x + 1,
-        y: main_chunks[1].y + 1,
-        width: main_chunks[1].width.saturating_sub(2),
-        height: main_chunks[1].height.saturating_sub(2),
+        Language::Zh => " ⚡ 常用网站连通性 [按 't' 刷新测速] ",
+        Language::En => " ⚡ Site Latency [Press 't' to Test] ",
     };
 
     let sites = [
@@ -202,50 +165,45 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         ("Baidu", "baidu.com", Color::Rgb(166, 227, 161)),
     ];
 
-    let site_chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage(16),
-            Constraint::Percentage(16),
-            Constraint::Percentage(16),
-            Constraint::Percentage(16),
-            Constraint::Percentage(18),
-            Constraint::Percentage(18),
-        ])
-        .split(inner_site_area);
+    let mut row1_spans = Vec::new();
+    let mut row2_spans = Vec::new();
 
-    let (fast_str, good_str, normal_str, timeout_str) = match lang {
-        Language::Zh => ("[极速]", "[良好]", "[一般]", "○ 测试中/超时"),
-        Language::En => ("[Fast]", "[Good]", "[Normal]", "○ Timeout"),
-    };
+    row1_spans.push(Span::raw(" "));
+    row2_spans.push(Span::raw(" "));
 
-    for (idx, (site_name, domain, brand_color)) in sites.iter().enumerate() {
-        if let Some(target_area) = site_chunks.get(idx) {
-            let lat_opt = state.site_latencies.get(*site_name).copied().flatten();
-            let (status_str, style) = match lat_opt {
-                Some(ms) if ms < 100 => (format!("● {} ms {}", ms, fast_str), Style::default().fg(Color::Rgb(166, 227, 161)).add_modifier(Modifier::BOLD)),
-                Some(ms) if ms < 300 => (format!("● {} ms {}", ms, good_str), Style::default().fg(Color::Rgb(137, 220, 235)).add_modifier(Modifier::BOLD)),
-                Some(ms) => (format!("● {} ms {}", ms, normal_str), Style::default().fg(Color::Rgb(250, 179, 135)).add_modifier(Modifier::BOLD)),
-                None => (timeout_str.to_string(), Style::default().fg(Color::Rgb(243, 139, 168))),
-            };
+    for (idx, (site_name, _domain, brand_color)) in sites.iter().enumerate() {
+        let lat_opt = state.site_latencies.get(*site_name).copied().flatten();
+        let (dot_color, lat_text) = match lat_opt {
+            Some(ms) if ms < 150 => (Theme::ACTIVE_GREEN, format!(" {:>3}ms ", ms)),
+            Some(ms) if ms < 350 => (Theme::SECONDARY, format!(" {:>3}ms ", ms)),
+            Some(ms) => (Theme::MODE_BADGE, format!(" {:>3}ms ", ms)),
+            None => (Theme::DANGER_RED, "  ---ms ".to_string()),
+        };
 
-            let text = vec![
-                Line::from(Span::styled(*site_name, Style::default().fg(*brand_color).add_modifier(Modifier::BOLD))),
-                Line::from(Span::styled(*domain, Style::default().fg(Theme::TEXT_MUTED))),
-                Line::from(Span::styled(status_str, style)),
-            ];
-
-            let card = Paragraph::new(text).block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Rounded)
-                    .border_style(Style::default().fg(Theme::BORDER)),
-            );
-            f.render_widget(card, *target_area);
-        }
+        let target_row = if idx < 3 { &mut row1_spans } else { &mut row2_spans };
+        target_row.push(Span::styled("● ", Style::default().fg(dot_color)));
+        target_row.push(Span::styled(format!("{:<8}", site_name), Style::default().fg(*brand_color).add_modifier(Modifier::BOLD)));
+        target_row.push(Span::styled(lat_text, Style::default().fg(dot_color).add_modifier(Modifier::BOLD)));
+        target_row.push(Span::raw("    "));
     }
 
-    // 3. Middle 2 Section: Realtime Traffic Sparklines
+    let site_matrix_widget = Paragraph::new(vec![
+        Line::from(vec![]), // Top padding
+        Line::from(row1_spans),
+        Line::from(row2_spans),
+    ])
+    .block(
+        Block::default()
+            .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
+            .border_style(Style::default().fg(Theme::BORDER))
+            .title(title_site),
+    );
+    f.render_widget(site_matrix_widget, main_chunks[1]);
+
+    // -------------------------------------------------------------------------
+    // 3. BOTTOM SECTION: Realtime Traffic Sparklines
+    // -------------------------------------------------------------------------
     let graph_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
@@ -258,8 +216,8 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     let down_max = down_data.iter().max().copied().unwrap_or(0);
 
     let (label_up, label_down) = match lang {
-        Language::Zh => ("▲ 上行 Rate", "▼ 下行 Rate"),
-        Language::En => ("▲ Upload Rate", "▼ Download Rate"),
+        Language::Zh => ("▲ 上行速率", "▼ 下行速率"),
+        Language::En => ("▲ Upload", "▼ Download"),
     };
 
     let up_title = format!(" {}: {} | Peak: {} ", label_up, format_speed(state.current_traffic.up), format_speed(up_max));
@@ -287,27 +245,5 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .data(&down_data)
         .style(Style::default().fg(Theme::TRAFFIC_DOWN));
     f.render_widget(down_sparkline, graph_chunks[1]);
-
-    // 4. Footer Quick Guide
-    let (label_guide_title, guide_str) = match lang {
-        Language::Zh => (" 💡 快速提示 Guide ", " [m] 模式切换  [p] 系统代理  [x] TUN模式  [t] 网站/节点测速  [r] 重启核心  [?] 帮助  [1-0] 页面直达 "),
-        Language::En => (" 💡 Quick Guide ", " [m] Mode  [p] SysProxy  [x] TUN  [t] Latency Test  [r] Restart Core  [?] Help  [1-0] Jump Tab "),
-    };
-
-    let quick_info = vec![
-        Line::from(vec![
-            Span::styled(" Keybindings: ", Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled(guide_str, Style::default().fg(Color::Rgb(205, 214, 244))),
-        ]),
-    ];
-    let info_block = Paragraph::new(quick_info)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .border_type(BorderType::Rounded)
-                .border_style(Style::default().fg(Theme::BORDER))
-                .title(label_guide_title),
-        )
-        .wrap(Wrap { trim: true });
-    f.render_widget(info_block, main_chunks[3]);
 }
+

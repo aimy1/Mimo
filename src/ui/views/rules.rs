@@ -3,7 +3,7 @@ use crate::ui::i18n::Language;
 use crate::ui::theme::Theme;
 use ratatui::{
     layout::{Constraint, Rect},
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     widgets::{Block, Borders, Row, Table},
     Frame,
 };
@@ -13,40 +13,33 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
 
     let header_cells = ["INDEX", "TYPE", "PAYLOAD / MATCH RULE", "PROXY TARGET"]
         .iter()
-        .map(|h| ratatui::widgets::Cell::from(*h).style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)));
+        .map(|h| ratatui::widgets::Cell::from(*h).style(Style::default().fg(Theme::SECONDARY).add_modifier(Modifier::BOLD)));
     let header = Row::new(header_cells).height(1).bottom_margin(1);
 
     let mut rows = Vec::new();
 
+    let push_rule = |rows: &mut Vec<Row>, idx: usize, rule_type: &str, payload: &str, proxy: &str| {
+        let target_style = match proxy {
+            "DIRECT" | "Direct" => Style::default().fg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD),
+            "REJECT" | "Reject" => Style::default().fg(Theme::DANGER_RED).add_modifier(Modifier::BOLD),
+            _ => Style::default().fg(Theme::PRIMARY).add_modifier(Modifier::BOLD),
+        };
+
+        rows.push(Row::new(vec![
+            ratatui::widgets::Cell::from(format!("#{}", idx + 1)).style(Style::default().fg(Theme::TEXT_DIM)),
+            ratatui::widgets::Cell::from(rule_type.to_string()).style(Style::default().fg(Theme::SECONDARY)),
+            ratatui::widgets::Cell::from(payload.to_string()).style(Style::default().fg(Theme::TEXT_MAIN)),
+            ratatui::widgets::Cell::from(proxy.to_string()).style(target_style),
+        ]));
+    };
+
     if let Some(resp) = &state.rules_resp {
         for (idx, rule) in resp.rules.iter().enumerate() {
-            let target_style = match rule.proxy.as_str() {
-                "DIRECT" | "Direct" => Style::default().fg(Color::Green),
-                "REJECT" | "Reject" => Style::default().fg(Color::Red),
-                _ => Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
-            };
-
-            rows.push(Row::new(vec![
-                ratatui::widgets::Cell::from(format!("#{}", idx + 1)).style(Style::default().fg(Color::DarkGray)),
-                ratatui::widgets::Cell::from(rule.rule_type.clone()).style(Style::default().fg(Color::Cyan)),
-                ratatui::widgets::Cell::from(rule.payload.clone()),
-                ratatui::widgets::Cell::from(rule.proxy.clone()).style(target_style),
-            ]));
+            push_rule(&mut rows, idx, &rule.rule_type, &rule.payload, &rule.proxy);
         }
     } else if let Some(parsed) = &state.parsed_active_profile {
         for (idx, rule) in parsed.rules.iter().enumerate() {
-            let target_style = match rule.proxy.as_str() {
-                "DIRECT" | "Direct" => Style::default().fg(Color::Green),
-                "REJECT" | "Reject" => Style::default().fg(Color::Red),
-                _ => Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
-            };
-
-            rows.push(Row::new(vec![
-                ratatui::widgets::Cell::from(format!("#{}", idx + 1)).style(Style::default().fg(Color::DarkGray)),
-                ratatui::widgets::Cell::from(rule.rule_type.clone()).style(Style::default().fg(Color::Cyan)),
-                ratatui::widgets::Cell::from(rule.payload.clone()),
-                ratatui::widgets::Cell::from(rule.proxy.clone()).style(target_style),
-            ]));
+            push_rule(&mut rows, idx, &rule.rule_type, &rule.payload, &rule.proxy);
         }
     }
 
@@ -58,8 +51,14 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .unwrap_or(0);
 
     let title_str = match lang {
-        Language::Zh => format!(" 路由规则列表 Rules List Total: {} [j/k: 移动滚动] ", rules_count),
-        Language::En => format!(" Rules List ({}) [j/k: Scroll] ", rules_count),
+        Language::Zh => format!(" 📋 路由规则 ({} 条) [j/k: 滚动] ", rules_count),
+        Language::En => format!(" 📋 Rules ({}) [j/k: Scroll] ", rules_count),
+    };
+
+    let border_style = if state.focus_zone == crate::app::state::FocusZone::Workspace {
+        Style::default().fg(Theme::BORDER_FOCUS)
+    } else {
+        Style::default().fg(Theme::BORDER)
     };
 
     let table = Table::new(
@@ -76,7 +75,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         Block::default()
             .borders(Borders::ALL)
             .border_type(ratatui::widgets::BorderType::Rounded)
-            .border_style(Style::default().fg(Theme::BORDER))
+            .border_style(border_style)
             .title(title_str),
     )
     .row_highlight_style(Theme::ITEM_SELECTED);
@@ -88,3 +87,4 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
 
     f.render_stateful_widget(table, area, &mut table_state);
 }
+

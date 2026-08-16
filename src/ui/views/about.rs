@@ -3,7 +3,7 @@ use crate::ui::i18n::Language;
 use crate::ui::theme::Theme;
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, Paragraph},
     Frame,
@@ -23,22 +23,22 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     // 1. ASCII Art Logo Banner
     let logo_text = vec![
         Line::from(vec![
-            Span::styled("   __  __ _                    ", Style::default().fg(Color::Rgb(203, 166, 247)).add_modifier(Modifier::BOLD)),
+            Span::styled("   __  __ _                    ", Style::default().fg(Theme::PRIMARY).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
-            Span::styled("  |  \\/  (_)_ __ ___   ___     ", Style::default().fg(Color::Rgb(180, 190, 254)).add_modifier(Modifier::BOLD)),
+            Span::styled("  |  \\/  (_)_ __ ___   ___     ", Style::default().fg(Theme::PRIMARY).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
-            Span::styled("  | |\\/| | | '_ ` _ \\ / _ \\    ", Style::default().fg(Color::Rgb(137, 220, 235)).add_modifier(Modifier::BOLD)),
+            Span::styled("  | |\\/| | | '_ ` _ \\ / _ \\    ", Style::default().fg(Theme::SECONDARY).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
-            Span::styled("  | |  | | | | | | | | (_) |   ", Style::default().fg(Color::Rgb(166, 227, 161)).add_modifier(Modifier::BOLD)),
+            Span::styled("  | |  | | | | | | | | (_) |   ", Style::default().fg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
-            Span::styled("  |_|  |_|_|_| |_| |_|\\___/    ", Style::default().fg(Color::Rgb(249, 226, 175)).add_modifier(Modifier::BOLD)),
+            Span::styled("  |_|  |_|_|_| |_| |_|\\___/    ", Style::default().fg(Theme::WARN_YELLOW).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
-            Span::styled("  ⚡ Minimalist Mihomo Manager ", Style::default().fg(Color::Rgb(245, 194, 231)).add_modifier(Modifier::BOLD)),
+            Span::styled("  ⚡ Minimalist Mihomo Manager ", Style::default().fg(Theme::PRIMARY).add_modifier(Modifier::BOLD)),
             Span::styled(concat!(" v", env!("CARGO_PKG_VERSION")), Style::default().fg(Theme::TEXT_MUTED)),
         ]),
     ];
@@ -74,42 +74,42 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     let core_ver = state
         .version
         .as_ref()
-        .map(|v| format!("v{} (Meta: {})", v.version, v.meta))
+        .map(|v| format!("v{} ({})", v.version, v.meta))
         .unwrap_or_else(|| "Offline".into());
 
     let (label_name, label_author, label_ver, label_core, label_target, label_license, label_repo, title_meta) = match lang {
-        Language::Zh => (" 软件名称 (Name)   : ", " 软件作者 (Author) : ", " 当前版本 (Version): ", " Mihomo 核心版本   : ", " 运行目标 (Target) : ", " 开源协议 (License): ", " 项目仓库 (GitHub) : ", " 📌 项目元数据 Metadata "),
-        Language::En => (" Software Name     : ", " Software Author   : ", " Software Version  : ", " Mihomo Core Ver   : ", " Target Platform   : ", " License           : ", " GitHub Repository : ", " 📌 Project Metadata "),
+        Language::Zh => ("软件名称: ", "软件作者: ", "软件版本: ", "核心版本: ", "运行架构: ", "开源协议: ", "代码仓库: ", " 📌 项目信息 "),
+        Language::En => ("Name    : ", "Author  : ", "Version : ", "Core Ver: ", "Target  : ", "License : ", "GitHub  : ", " 📌 Project Info "),
     };
 
     let card1_text = vec![
         Line::from(vec![
-            Span::styled(label_name, Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled("Mimo (Minimalist Mihomo Manager)", Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+            Span::styled(format!(" {}", label_name), Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled("Mimo (Minimalist Mihomo Manager)", Style::default().fg(Theme::TEXT_MAIN).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
-            Span::styled(label_author, Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled("aisaniya", Style::default().fg(Color::Rgb(243, 139, 168)).add_modifier(Modifier::BOLD)),
+            Span::styled(format!(" {}", label_author), Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled("aisaniya", Style::default().fg(Theme::PRIMARY).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
-            Span::styled(label_ver, Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled(format!("v{} (Rust 2024 Edition)", env!("CARGO_PKG_VERSION")), Style::default().fg(Theme::ACTIVE_GREEN)),
+            Span::styled(format!(" {}", label_ver), Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(format!("v{} (Rust 2024)", env!("CARGO_PKG_VERSION")), Style::default().fg(Theme::ACTIVE_GREEN)),
         ]),
         Line::from(vec![
-            Span::styled(label_core, Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled(core_ver, Style::default().fg(Color::Rgb(249, 226, 175))),
+            Span::styled(format!(" {}", label_core), Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(core_ver, Style::default().fg(Theme::WARN_YELLOW)),
         ]),
         Line::from(vec![
-            Span::styled(label_target, Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled("Linux x86_64 (Terminal TUI / CLI)", Style::default().fg(Color::Rgb(137, 220, 235))),
+            Span::styled(format!(" {}", label_target), Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled("Linux x86_64 (Terminal TUI / CLI)", Style::default().fg(Theme::SECONDARY)),
         ]),
         Line::from(vec![
-            Span::styled(label_license, Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled("MIT License", Style::default().fg(Color::Rgb(203, 166, 247))),
+            Span::styled(format!(" {}", label_license), Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled("MIT License", Style::default().fg(Theme::PRIMARY)),
         ]),
         Line::from(vec![
-            Span::styled(label_repo, Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled("https://github.com/aimy1/Mimo", Style::default().fg(Color::Yellow)),
+            Span::styled(format!(" {}", label_repo), Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled("https://github.com/aimy1/Mimo", Style::default().fg(Theme::SECONDARY)),
         ]),
     ];
 
@@ -124,26 +124,26 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
 
     // Right Top Card: Tech Stack
     let (label_lang, label_ui, label_async, label_theme, title_arch) = match lang {
-        Language::Zh => (" 编程语言 : ", " 终端引擎 : ", " 异步运行时: ", " 视觉主题 : ", " 🏗️ 核心架构与技术栈 Architecture "),
-        Language::En => (" Language : ", " TUI Engine: ", " Async Runtime: ", " UI Theme: ", " 🏗️ Architecture & Tech Stack "),
+        Language::Zh => ("开发语言: ", "终端引擎: ", "异步运行: ", "界面配色: ", " 🏗️ 技术架构 "),
+        Language::En => ("Language: ", "TUI Core: ", "Async   : ", "Theme   : ", " 🏗️ Architecture "),
     };
 
     let card2_text = vec![
         Line::from(vec![
-            Span::styled(label_lang, Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled("Rust 1.80+ (High Performance & Zero-Cost)", Style::default().fg(Color::Rgb(250, 179, 135))),
+            Span::styled(format!(" {}", label_lang), Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled("Rust 1.80+ (Zero-Cost Abstractions)", Style::default().fg(Theme::TEXT_MAIN)),
         ]),
         Line::from(vec![
-            Span::styled(label_ui, Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled("Ratatui v0.29 + Crossterm", Style::default().fg(Color::Rgb(137, 220, 235))),
+            Span::styled(format!(" {}", label_ui), Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled("Ratatui v0.29 + Crossterm", Style::default().fg(Theme::SECONDARY)),
         ]),
         Line::from(vec![
-            Span::styled(label_async, Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled("Tokio + Reqwest + WebSocket Stream", Style::default().fg(Color::Rgb(166, 227, 161))),
+            Span::styled(format!(" {}", label_async), Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled("Tokio + Reqwest + WebSockets", Style::default().fg(Theme::ACTIVE_GREEN)),
         ]),
         Line::from(vec![
-            Span::styled(label_theme, Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled("Catppuccin Morandi Dark Palette", Style::default().fg(Color::Rgb(203, 166, 247))),
+            Span::styled(format!(" {}", label_theme), Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled("Catppuccin Mocha Dark Palette", Style::default().fg(Theme::PRIMARY)),
         ]),
     ];
 
@@ -158,22 +158,22 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
 
     // Right Bottom Card: Credits
     let (label_thanks, title_credits) = match lang {
-        Language::Zh => (" 特别鸣谢 (Credits):", " 💖 致谢 Acknowledgments "),
-        Language::En => (" Special Thanks (Credits):", " 💖 Acknowledgments "),
+        Language::Zh => ("鸣谢开源社区:", " 💖 致谢鸣谢 "),
+        Language::En => ("Special Thanks:", " 💖 Acknowledgments "),
     };
 
     let card3_text = vec![
         Line::from(vec![
-            Span::styled(label_thanks, Style::default().fg(Color::Rgb(249, 226, 175)).add_modifier(Modifier::BOLD)),
+            Span::styled(format!(" {}", label_thanks), Style::default().fg(Theme::WARN_YELLOW).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
-            Span::styled(" - Mihomo Team (MetaCubeX/mihomo)", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled("  - Mihomo Team (MetaCubeX/mihomo)", Style::default().fg(Theme::TEXT_MUTED)),
         ]),
         Line::from(vec![
-            Span::styled(" - Ratatui Community (ratatui-org)", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled("  - Ratatui Community (ratatui-org)", Style::default().fg(Theme::TEXT_MUTED)),
         ]),
         Line::from(vec![
-            Span::styled(" - Catppuccin Theme Palette", Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled("  - Catppuccin Theme Community", Style::default().fg(Theme::TEXT_MUTED)),
         ]),
     ];
 
@@ -186,3 +186,4 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     );
     f.render_widget(card3_block, right_chunks[1]);
 }
+

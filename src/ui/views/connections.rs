@@ -3,7 +3,7 @@ use crate::ui::i18n::Language;
 use crate::ui::theme::{format_bytes, Theme};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, Paragraph, Row, Table, TableState},
     Frame,
@@ -30,16 +30,16 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
 
     if state.is_searching {
         let search_title = match lang {
-            Language::Zh => " 连接搜索 Search Connections ",
-            Language::En => " Search Connections ",
+            Language::Zh => " 🔍 搜索连接 ",
+            Language::En => " 🔍 Search Connections ",
         };
-        let search_text = format!(" 🔍 Search Connections: {}_", state.search_query);
+        let search_text = format!(" 搜索: {}█", state.search_query);
         let search_block = Paragraph::new(search_text)
             .block(
                 Block::default()
                     .borders(Borders::ALL)
                     .border_type(BorderType::Rounded)
-                    .border_style(Style::default().fg(Color::Yellow))
+                    .border_style(Style::default().fg(Theme::PRIMARY))
                     .title(search_title),
             );
         f.render_widget(search_block, top_chunks[0]);
@@ -47,7 +47,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
 
     let header_cells = ["HOST / DST", "PROCESS", "RULE", "CHAINS", "UP / DOWN"]
         .iter()
-        .map(|h| ratatui::widgets::Cell::from(*h).style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)));
+        .map(|h| ratatui::widgets::Cell::from(*h).style(Style::default().fg(Theme::SECONDARY).add_modifier(Modifier::BOLD)));
     let header = Row::new(header_cells).height(1).bottom_margin(1);
 
     let conn_list = state.filtered_sorted_connections();
@@ -70,7 +70,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
 
         let rule = conn.rule.as_deref().unwrap_or("Match");
 
-        let chains_str = conn.chains.join(" -> ");
+        let chains_str = conn.chains.join(" → ");
 
         let bandwidth = format!(
             "↑ {}  ↓ {}",
@@ -84,7 +84,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
             rule.to_string(),
             chains_str,
             bandwidth,
-        ]));
+        ]).style(Style::default().fg(Theme::TEXT_MAIN)));
     }
 
     let sort_label = match (state.sort_connections_by_traffic, lang) {
@@ -96,12 +96,12 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
 
     let title_str = match lang {
         Language::Zh => format!(
-            " 活动连接 Connections ({}) [{}] ['d':断开选定 | 'D':全切断 | 's':排序 | '/':搜索] ",
+            " 🔗 活跃连接 ({}) · {} [d:断开 | D:全断 | s:排序 | /:搜索] ",
             conn_list.len(),
             sort_label
         ),
         Language::En => format!(
-            " Active Connections ({}) [{}] ['d': Close | 'D': Close All | 's': Sort | '/': Search] ",
+            " 🔗 Active Connections ({}) · {} [d:Close | D:Close All | s:Sort | /:Search] ",
             conn_list.len(),
             sort_label
         ),
@@ -137,49 +137,54 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     // Detail Inspector Box
     let mut detail_lines = Vec::new();
     if let Some(conn) = conn_list.get(state.selected_conn_idx) {
-            let meta = &conn.metadata;
-            let host_ip = format!(
-                "Host: {} ({}:{})",
-                meta.host.as_deref().unwrap_or("-"),
-                meta.destination_ip.as_deref().unwrap_or("-"),
-                meta.destination_port.as_deref().unwrap_or("-")
-            );
-            let process_info = format!(
-                "Process: {} ({})",
-                meta.process.as_deref().unwrap_or("-"),
-                meta.process_path.as_deref().unwrap_or("-")
-            );
-            let rule_info = format!(
-                "Rule: {} Payload: [{}]",
-                conn.rule.as_deref().unwrap_or("-"),
-                conn.rule_payload.as_deref().unwrap_or("")
-            );
+        let meta = &conn.metadata;
+        let host_ip = format!(
+            "Host: {} ({}:{})",
+            meta.host.as_deref().unwrap_or("-"),
+            meta.destination_ip.as_deref().unwrap_or("-"),
+            meta.destination_port.as_deref().unwrap_or("-")
+        );
+        let process_info = format!(
+            "Process: {} ({})",
+            meta.process.as_deref().unwrap_or("-"),
+            meta.process_path.as_deref().unwrap_or("-")
+        );
+        let rule_info = format!(
+            "Rule: {}  Payload: [{}]",
+            conn.rule.as_deref().unwrap_or("-"),
+            conn.rule_payload.as_deref().unwrap_or("")
+        );
 
-            let label_detail = match lang { Language::Zh => " [连接详情 Detail] ", Language::En => " [Detail] " };
-            let label_proc = match lang { Language::Zh => " [进程与路径 Process] ", Language::En => " [Process & Path] " };
-            let label_rule = match lang { Language::Zh => " [匹配规则 Rule] ", Language::En => " [Rule Match] " };
+        let label_detail = match lang { Language::Zh => "连接详情: ", Language::En => "Detail: " };
+        let label_proc = match lang { Language::Zh => "进程路径: ", Language::En => "Process: " };
+        let label_rule = match lang { Language::Zh => "分流规则: ", Language::En => "Rule: " };
 
-            detail_lines.push(Line::from(vec![
-                Span::styled(label_detail, Style::default().fg(Color::LightMagenta).add_modifier(Modifier::BOLD)),
-                Span::raw(host_ip),
-            ]));
-            detail_lines.push(Line::from(vec![
-                Span::styled(label_proc, Style::default().fg(Color::Cyan)),
-                Span::raw(process_info),
-            ]));
-            detail_lines.push(Line::from(vec![
-                Span::styled(label_rule, Style::default().fg(Color::Yellow)),
-                Span::raw(rule_info),
-            ]));
-        }
+        detail_lines.push(Line::from(vec![
+            Span::styled(format!(" {}", label_detail), Style::default().fg(Theme::PRIMARY).add_modifier(Modifier::BOLD)),
+            Span::styled(host_ip, Style::default().fg(Theme::TEXT_MAIN)),
+        ]));
+        detail_lines.push(Line::from(vec![
+            Span::styled(format!(" {}", label_proc), Style::default().fg(Theme::SECONDARY)),
+            Span::styled(process_info, Style::default().fg(Theme::TEXT_SUB)),
+        ]));
+        detail_lines.push(Line::from(vec![
+            Span::styled(format!(" {}", label_rule), Style::default().fg(Theme::WARN_YELLOW)),
+            Span::styled(rule_info, Style::default().fg(Theme::TEXT_MUTED)),
+        ]));
+    }
 
     if detail_lines.is_empty() {
         let no_conn_str = match lang {
-            Language::Zh => "无选定连接信息 (No connection selected)",
-            Language::En => "No connection selected",
+            Language::Zh => " 无选定连接信息",
+            Language::En => " No connection selected",
         };
         detail_lines.push(Line::from(Span::styled(no_conn_str, Style::default().fg(Theme::TEXT_MUTED))));
     }
+
+    let detail_title = match lang {
+        Language::Zh => " 🔍 连接详情 ",
+        Language::En => " 🔍 Connection Detail ",
+    };
 
     let detail_block = Paragraph::new(detail_lines)
         .block(
@@ -187,7 +192,8 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded)
                 .border_style(Style::default().fg(Theme::BORDER))
-                .title(" Connection Detail Inspector "),
+                .title(detail_title),
         );
     f.render_widget(detail_block, chunks[1]);
 }
+

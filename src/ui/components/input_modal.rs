@@ -3,7 +3,7 @@ use crate::ui::i18n::Language;
 use crate::ui::theme::Theme;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, Clear, Paragraph},
     Frame,
@@ -11,19 +11,19 @@ use ratatui::{
 
 pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     let lang = Language::from_str(&state.settings_lang);
-    let popup_area = centered_rect(68, 48, area);
+    let popup_area = centered_rect(65, 45, area);
     f.render_widget(Clear, popup_area);
 
     let modal_title = match lang {
-        Language::Zh => " ➕ 添加/编辑 机场订阅 Profile ",
-        Language::En => " ➕ Add / Edit Subscription Profile ",
+        Language::Zh => " ➕ 添加订阅配置 ",
+        Language::En => " ➕ Add Subscription Profile ",
     };
 
     let modal_block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
-        .border_style(Style::default().fg(Theme::BORDER_FOCUS))
-        .title(Span::styled(modal_title, Style::default().fg(Theme::BORDER_FOCUS).add_modifier(Modifier::BOLD)));
+        .border_style(Style::default().fg(Theme::PRIMARY))
+        .title(Span::styled(modal_title, Style::default().fg(Theme::PRIMARY).add_modifier(Modifier::BOLD)));
     
     let inner_area = modal_block.inner(popup_area);
     f.render_widget(modal_block, popup_area);
@@ -47,8 +47,8 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     };
 
     let name_placeholder_active = match lang {
-        Language::Zh => " 请输入订阅名称 (例如: MySub)_",
-        Language::En => " Enter profile name (e.g., MySub)_",
+        Language::Zh => " 请输入订阅名称 (例如: 节点订阅)_",
+        Language::En => " Enter profile name (e.g., MyProxy)_",
     };
     let name_placeholder_idle = match lang {
         Language::Zh => " 请输入订阅名称",
@@ -67,12 +67,12 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     };
 
     let title_name_block = match lang {
-        Language::Zh => " 1. 订阅名称 (Profile Name) ",
+        Language::Zh => " 1. 订阅名称 ",
         Language::En => " 1. Profile Name ",
     };
 
     let name_widget = Paragraph::new(name_display)
-        .style(if state.profile_name_input.is_empty() && is_name_focused { Style::default().fg(Color::Rgb(147, 153, 178)) } else { Style::default().fg(Color::White) })
+        .style(if state.profile_name_input.is_empty() && is_name_focused { Style::default().fg(Theme::TEXT_MUTED) } else { Style::default().fg(Theme::TEXT_MAIN) })
         .block(
             Block::default()
                 .borders(Borders::ALL)
@@ -111,12 +111,12 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     };
 
     let title_url_block = match lang {
-        Language::Zh => " 2. 订阅链接 (Subscription URL / Local File Path) ",
-        Language::En => " 2. Subscription URL / Local Path ",
+        Language::Zh => " 2. 订阅链接 (URL) ",
+        Language::En => " 2. Subscription URL ",
     };
 
     let url_widget = Paragraph::new(url_display)
-        .style(if state.profile_url_input.is_empty() && is_url_focused { Style::default().fg(Color::Rgb(147, 153, 178)) } else { Style::default().fg(Color::White) })
+        .style(if state.profile_url_input.is_empty() && is_url_focused { Style::default().fg(Theme::TEXT_MUTED) } else { Style::default().fg(Theme::TEXT_MAIN) })
         .block(
             Block::default()
                 .borders(Borders::ALL)
@@ -128,18 +128,17 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
 
     // Instruction Footer
     let (label_switch, label_download, label_cancel) = match lang {
-        Language::Zh => (" 切换输入框   ", " 下载并解析   ", " 取消 "),
-        Language::En => (" Switch Input   ", " Save & Fetch   ", " Cancel "),
+        Language::Zh => ("[Tab: 切换输入框] ", "[Enter: 保存并下载] ", "[Esc: 取消]"),
+        Language::En => ("[Tab: Switch Field] ", "[Enter: Save & Download] ", "[Esc: Cancel]"),
     };
 
     let text = vec![
         Line::from(vec![
-            Span::styled(" [ Tab ] ", Style::default().fg(Color::Rgb(17, 17, 27)).bg(Color::Rgb(249, 226, 175)).add_modifier(Modifier::BOLD)),
-            Span::raw(label_switch),
-            Span::styled(" [ Enter ] ", Style::default().fg(Color::Rgb(17, 17, 27)).bg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD)),
-            Span::raw(label_download),
-            Span::styled(" [ Esc ] ", Style::default().fg(Color::White).bg(Color::Rgb(243, 139, 168)).add_modifier(Modifier::BOLD)),
-            Span::raw(label_cancel),
+            Span::styled(label_switch, Style::default().fg(Theme::SECONDARY)),
+            Span::raw("   "),
+            Span::styled(label_download, Style::default().fg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD)),
+            Span::raw("   "),
+            Span::styled(label_cancel, Style::default().fg(Theme::DANGER_RED)),
         ]),
     ];
     let footer_widget = Paragraph::new(text)
@@ -167,3 +166,4 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
         ])
         .split(popup_layout[1])[1]
 }
+

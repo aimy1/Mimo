@@ -113,6 +113,7 @@ impl MihomoClient {
         let payload = serde_json::json!({
             "tun": {
                 "enable": enable,
+                "device": "mihomo",
                 "stack": stack,
                 "auto-route": true,
                 "auto-detect-interface": true

@@ -3,7 +3,7 @@ use crate::ui::i18n::Language;
 use crate::ui::theme::Theme;
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph},
     Frame,
@@ -14,7 +14,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
 
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(30), Constraint::Percentage(70)])
+        .constraints([Constraint::Percentage(28), Constraint::Percentage(72)])
         .split(area);
 
     let groups_border_style = if state.focus_zone == crate::app::state::FocusZone::Workspace && state.proxy_sub_focus == crate::app::state::ProxySubFocus::Groups {
@@ -38,20 +38,21 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
 
             if let Some(resp) = &state.proxies_resp
                 && let Some(item) = resp.proxies.get(name)
-                    && let Some(now) = &item.now {
-                        line_spans.push(Span::styled(
-                            format!(" → {}", now),
-                            Style::default().fg(Theme::TEXT_MUTED),
-                        ));
-                    }
+                && let Some(now) = &item.now
+            {
+                line_spans.push(Span::styled(
+                    format!(" → {}", now),
+                    Style::default().fg(Theme::TEXT_MUTED),
+                ));
+            }
 
             ListItem::new(Line::from(line_spans))
         })
         .collect();
 
     let groups_title = match lang {
-        Language::Zh => " 代理分组 Proxy Groups ",
-        Language::En => " Proxy Groups ",
+        Language::Zh => " 📂 代理分组 ",
+        Language::En => " 📂 Proxy Groups ",
     };
 
     let groups_list = List::new(group_items)
@@ -96,24 +97,24 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     // Render Search Bar if active
     if state.is_searching {
         let search_title = match lang {
-            Language::Zh => " 节点搜索 Search Nodes ",
-            Language::En => " Search Nodes ",
+            Language::Zh => " 🔍 搜索节点 ",
+            Language::En => " 🔍 Search Nodes ",
         };
-        let search_text = format!(" 🔍 Search: {}_", state.search_query);
+        let search_text = format!(" 搜索: {}█", state.search_query);
         let search_block = Paragraph::new(search_text)
             .block(
                 Block::default()
                     .borders(Borders::ALL)
                     .border_type(BorderType::Rounded)
-                    .border_style(Style::default().fg(Color::Yellow))
+                    .border_style(Style::default().fg(Theme::PRIMARY))
                     .title(search_title),
             );
         f.render_widget(search_block, right_chunks[0]);
     }
 
     let info_card_str = match lang {
-        Language::Zh => " [提示卡片] ",
-        Language::En => " [Info Card] ",
+        Language::Zh => " [说明] ",
+        Language::En => " [Info] ",
     };
 
     let node_items: Vec<ListItem> = filtered_nodes
@@ -141,15 +142,14 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
             let badge_text = if is_info_card { "INFO".to_string() } else { proxy_type.clone() };
 
             let type_badge_style = if is_info_card {
-                Style::default().fg(Color::DarkGray)
+                Style::default().fg(Theme::TEXT_DIM)
             } else {
                 match proxy_type.as_str() {
-                    "Shadowsocks" | "SS" => Style::default().fg(Color::Rgb(137, 220, 235)),
-                    "Vmess" | "Vless" => Style::default().fg(Color::Rgb(203, 166, 247)),
-                    "Trojan" => Style::default().fg(Color::Rgb(249, 226, 175)),
-                    "Hysteria2" | "Tuic" => Style::default().fg(Color::Rgb(166, 227, 161)),
-                    "anytls" => Style::default().fg(Color::Rgb(137, 220, 235)),
-                    "Selector" | "URLTest" => Style::default().fg(Theme::TEXT_MUTED),
+                    "Shadowsocks" | "SS" => Style::default().fg(Theme::SECONDARY),
+                    "Vmess" | "Vless" => Style::default().fg(Theme::PRIMARY),
+                    "Trojan" => Style::default().fg(Theme::WARN_YELLOW),
+                    "Hysteria2" | "Tuic" => Style::default().fg(Theme::ACTIVE_GREEN),
+                    "anytls" => Style::default().fg(Theme::SECONDARY),
                     _ => Style::default().fg(Theme::TEXT_MUTED),
                 }
             };
@@ -169,7 +169,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
                 });
 
             let latency_span = if is_info_card {
-                Span::styled(info_card_str, Style::default().fg(Color::DarkGray))
+                Span::styled(info_card_str, Style::default().fg(Theme::TEXT_DIM))
             } else {
                 match delay_opt {
                     Some(ms) if ms < 200 => Span::styled(
@@ -184,22 +184,22 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
                         format!(" {:>4} ms ", ms),
                         Theme::PILL_BAD,
                     ),
-                    None => Span::styled(" --- ms ", Theme::PILL_UNTESTED),
+                    None => Span::styled("  --- ms ", Theme::PILL_UNTESTED),
                 }
             };
 
             let name_style = if is_now {
                 Style::default().fg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD)
             } else if is_info_card {
-                Style::default().fg(Color::DarkGray)
+                Style::default().fg(Theme::TEXT_DIM)
             } else {
-                Style::default().fg(Color::White)
+                Style::default().fg(Theme::TEXT_MAIN)
             };
 
             let line = Line::from(vec![
                 Span::styled(mark, Style::default().fg(Theme::ACTIVE_GREEN)),
                 Span::styled(format!("[{:<7}] ", badge_text), type_badge_style),
-                Span::styled(format!("{:<30}", node_name), name_style),
+                Span::styled(format!("{:<32}", node_name), name_style),
                 latency_span,
             ]);
 
@@ -209,12 +209,12 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
 
     let title_str = match lang {
         Language::Zh => format!(
-            " 节点列表 Nodes in '{}' [{} 节点] [Enter:切换节点 | 't':测速 | 's':搜索] ",
+            " ⚡ 节点列表 · {} ({} 节点) [Enter:切换 | t:测速 | s:搜索] ",
             group_name,
             filtered_nodes.len()
         ),
         Language::En => format!(
-            " Node List in '{}' [{} nodes] [Enter: Select | 't': Test | 's': Search] ",
+            " ⚡ Nodes · {} ({} nodes) [Enter:Select | t:Test | s:Search] ",
             group_name,
             filtered_nodes.len()
         ),
@@ -236,3 +236,4 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     }
     f.render_stateful_widget(nodes_list, right_chunks[1], &mut node_list_state);
 }
+

@@ -27,18 +27,18 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     for lvl in &levels {
         let is_sel = state.log_filter.eq_ignore_ascii_case(lvl);
         let style = if is_sel {
-            Style::default().fg(Color::Rgb(17, 17, 27)).bg(Theme::BORDER_FOCUS).add_modifier(Modifier::BOLD)
+            Style::default().fg(Color::Rgb(17, 17, 27)).bg(Theme::PRIMARY).add_modifier(Modifier::BOLD)
         } else {
-            Style::default().fg(Color::White).bg(Color::Rgb(30, 30, 46))
+            Style::default().fg(Theme::TEXT_MUTED).bg(Theme::BG_SURFACE)
         };
         filter_spans.push(Span::styled(format!(" {} ", lvl.to_uppercase()), style));
         filter_spans.push(Span::raw(" "));
     }
 
-    let btn_clear_str = match lang { Language::Zh => " [ 🧹 清除日志 (c) ] ", Language::En => " [ 🧹 Clear Logs (c) ] " };
-    filter_spans.push(Span::styled(btn_clear_str, Style::default().fg(Color::White).bg(Color::Rgb(243, 139, 168)).add_modifier(Modifier::BOLD)));
+    let btn_clear_str = match lang { Language::Zh => " [ 🧹 c: 清空 ] ", Language::En => " [ 🧹 c: Clear ] " };
+    filter_spans.push(Span::styled(btn_clear_str, Style::default().fg(Theme::DANGER_RED).add_modifier(Modifier::BOLD)));
 
-    let title_filter = match lang { Language::Zh => " 日志过滤器 Log Filter ", Language::En => " Log Stream Filter " };
+    let title_filter = match lang { Language::Zh => " 🔍 日志过滤 ", Language::En => " 🔍 Filter " };
     let filter_block = Paragraph::new(Line::from(filter_spans)).block(
         Block::default()
             .borders(Borders::ALL)
@@ -57,27 +57,33 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         }
 
         let (type_color, label) = match lvl_str.as_str() {
-            "info" => (Color::Rgb(166, 227, 161), "INFO "),
-            "warning" | "warn" => (Color::Rgb(249, 226, 175), "WARN "),
-            "error" => (Color::Rgb(243, 139, 168), "ERR  "),
-            "debug" => (Color::Rgb(137, 220, 235), "DBG  "),
-            _ => (Theme::TEXT_MUTED, "LOG  "),
+            "info" => (Theme::ACTIVE_GREEN, "INFO"),
+            "warning" | "warn" => (Theme::WARN_YELLOW, "WARN"),
+            "error" => (Theme::DANGER_RED, "ERR "),
+            "debug" => (Theme::SECONDARY, "DBG "),
+            _ => (Theme::TEXT_MUTED, "LOG "),
         };
 
         lines.push(Line::from(vec![
             Span::styled(format!("[{}] ", label), Style::default().fg(type_color).add_modifier(Modifier::BOLD)),
-            Span::raw(&log.payload),
+            Span::styled(&log.payload, Style::default().fg(Theme::TEXT_MAIN)),
         ]));
     }
 
     if lines.is_empty() {
-        let no_logs_str = match lang { Language::Zh => "无符合条件的日志记录...", Language::En => "No log entries found..." };
+        let no_logs_str = match lang { Language::Zh => " 无符合条件的日志记录...", Language::En => " No log entries found..." };
         lines.push(Line::from(Span::styled(no_logs_str, Style::default().fg(Theme::TEXT_MUTED))));
     }
 
     let title_stream = match lang {
-        Language::Zh => format!(" Mihomo Core 实时日志 Stream ({}) [j/k: 滚动] ", state.logs.len()),
-        Language::En => format!(" Mihomo Core Logs Stream ({}) [j/k: Scroll] ", state.logs.len()),
+        Language::Zh => format!(" 📜 核心运行日志 ({}) [j/k: 滚动] ", state.logs.len()),
+        Language::En => format!(" 📜 Core Logs ({}) [j/k: Scroll] ", state.logs.len()),
+    };
+
+    let border_style = if state.focus_zone == crate::app::state::FocusZone::Workspace {
+        Style::default().fg(Theme::BORDER_FOCUS)
+    } else {
+        Style::default().fg(Theme::BORDER)
     };
 
     let logs_widget = Paragraph::new(lines)
@@ -85,7 +91,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
             Block::default()
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded)
-                .border_style(Style::default().fg(Theme::BORDER))
+                .border_style(border_style)
                 .title(title_stream),
         )
         .scroll((state.log_scroll as u16, 0))
@@ -93,3 +99,4 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
 
     f.render_widget(logs_widget, chunks[1]);
 }
+

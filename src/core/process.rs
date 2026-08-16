@@ -85,7 +85,7 @@ impl CoreProcess {
 
         info!("Starting Mihomo Core: {:?} -f {:?}", binary, config_path);
 
-        let work_dir = config_path.parent().and_then(|p| p.parent()).unwrap_or_else(|| Path::new("/home/fd/.config/mimo"));
+        let work_dir = crate::profile::ProfileManager::config_dir().unwrap_or_else(|_| PathBuf::from("."));
 
         use std::os::unix::process::CommandExt;
 

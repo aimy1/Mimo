@@ -12,103 +12,88 @@ use ratatui::{
 pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     let lang = Language::from_str(&state.settings_lang);
 
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(3), // Logo Header Banner
-            Constraint::Min(0),    // Clean Iconless Navigation List
-            Constraint::Length(5), // Extended Status Card
-        ])
-        .split(area);
-
-    // 1. Top Logo Header
-    let logo_text = vec![
-        Line::from(vec![
-            Span::styled("⚡ MIMO ", Style::default().fg(Color::Rgb(203, 166, 247)).add_modifier(Modifier::BOLD)),
-            Span::styled(concat!("v", env!("CARGO_PKG_VERSION")), Style::default().fg(Theme::TEXT_MUTED)),
-        ]),
-    ];
-
-    let header_border_style = if state.focus_zone == crate::app::state::FocusZone::Sidebar {
+    let is_focused = state.focus_zone == crate::app::state::FocusZone::Sidebar;
+    let border_style = if is_focused {
         Style::default().fg(Theme::BORDER_FOCUS)
     } else {
         Style::default().fg(Theme::BORDER)
     };
 
-    let logo_block = Paragraph::new(logo_text)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .border_type(BorderType::Rounded)
-                .border_style(header_border_style),
-        )
-        .alignment(ratatui::layout::Alignment::Center);
-    f.render_widget(logo_block, chunks[0]);
+    // 1. Single unified outer container block for the whole sidebar
+    let sidebar_title = match lang {
+        Language::Zh => " ⚡ MIMO ",
+        Language::En => " ⚡ MIMO ",
+    };
 
-    // 2. Iconless Clean Navigation List with Shortcut Badges
+    let container_block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(border_style)
+        .title(Span::styled(
+            sidebar_title,
+            Style::default().fg(Theme::PRIMARY).add_modifier(Modifier::BOLD),
+        ));
+
+    let inner_area = container_block.inner(area);
+    f.render_widget(container_block, area);
+
+    // Inner layout: Logo/Version (1 line), Nav List (Min 0), Status info (3 lines)
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(1), // Version subtitle
+            Constraint::Length(1), // Divider spacing
+            Constraint::Min(0),    // Nav list
+            Constraint::Length(4), // Compact status info
+        ])
+        .split(inner_area);
+
+    // 1. Version subtitle
+    let ver_line = Line::from(vec![
+        Span::styled(" v", Style::default().fg(Theme::TEXT_DIM)),
+        Span::styled(env!("CARGO_PKG_VERSION"), Style::default().fg(Theme::TEXT_MUTED)),
+        Span::styled(" (Rust)", Style::default().fg(Theme::TEXT_DIM)),
+    ]);
+    f.render_widget(Paragraph::new(ver_line).alignment(ratatui::layout::Alignment::Center), chunks[0]);
+
+    // 2. Navigation List
     let items: Vec<ListItem> = Tab::ALL
         .iter()
         .enumerate()
         .map(|(idx, tab)| {
             let is_selected = state.active_tab == *tab;
-            let title = tab.title(lang);
+            let title = tab.title(lang).trim();
 
-            // Shortcut key index badge [1] .. [9], [0]
-            let shortcut_str = if idx < 9 {
-                format!("[{}] ", idx + 1)
+            let shortcut_char = if idx < 9 {
+                format!("{}", idx + 1)
             } else {
-                "[0] ".to_string()
+                "0".to_string()
             };
 
-            let (indicator, style, shortcut_style) = if is_selected {
-                (
-                    "▶ ",
-                    Style::default()
-                        .fg(Color::Rgb(17, 17, 27))
-                        .bg(Color::Rgb(203, 166, 247))
-                        .add_modifier(Modifier::BOLD),
-                    Style::default()
-                        .fg(Color::Rgb(30, 30, 46))
-                        .bg(Color::Rgb(203, 166, 247))
-                        .add_modifier(Modifier::BOLD),
-                )
+            if is_selected {
+                let line = Line::from(vec![
+                    Span::styled("▶ ", Style::default().fg(Color::Rgb(17, 17, 27))),
+                    Span::styled(format!("{} ", shortcut_char), Style::default().fg(Color::Rgb(17, 17, 27)).add_modifier(Modifier::BOLD)),
+                    Span::styled(title, Style::default().fg(Color::Rgb(17, 17, 27)).add_modifier(Modifier::BOLD)),
+                ]);
+                ListItem::new(line).style(Theme::SIDEBAR_SELECTED)
             } else {
-                (
-                    "  ",
-                    Style::default().fg(Color::Rgb(205, 214, 244)),
-                    Style::default().fg(Color::Rgb(147, 153, 178)),
-                )
-            };
-
-            let line = Line::from(vec![
-                Span::styled(indicator, if is_selected { Style::default().fg(Color::Rgb(17, 17, 27)).bg(Color::Rgb(203, 166, 247)) } else { Style::default().fg(Theme::TEXT_MUTED) }),
-                Span::styled(shortcut_str, shortcut_style),
-                Span::styled(format!("{:<10}", title.trim()), style),
-            ]);
-
-            ListItem::new(line).style(style)
+                let line = Line::from(vec![
+                    Span::styled("  ", Style::default()),
+                    Span::styled(format!("{} ", shortcut_char), Style::default().fg(Theme::TEXT_DIM)),
+                    Span::styled(title, Style::default().fg(Theme::TEXT_MAIN)),
+                ]);
+                ListItem::new(line)
+            }
         })
         .collect();
 
-    let nav_title = match lang {
-        Language::Zh => " 导航 Menu ",
-        Language::En => " Navigation ",
-    };
-
-    let sidebar_list = List::new(items)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .border_type(BorderType::Rounded)
-                .border_style(header_border_style)
-                .title(Span::styled(nav_title, Style::default().fg(Theme::TEXT_MUTED))),
-        );
-
+    let sidebar_list = List::new(items);
     let mut state_list = ListState::default();
     state_list.select(Some(state.active_tab as usize));
-    f.render_stateful_widget(sidebar_list, chunks[1], &mut state_list);
+    f.render_stateful_widget(sidebar_list, chunks[2], &mut state_list);
 
-    // 3. Extended Status Card
+    // 3. Compact Status Info at bottom of sidebar
     let active_profile = state
         .profiles
         .iter()
@@ -116,50 +101,28 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .map(|p| p.name.as_str())
         .unwrap_or("Default");
 
-    let tun_status_span = if state.is_tun_enabled {
-        Span::styled("TUN: ON", Style::default().fg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD))
-    } else {
-        Span::styled("TUN: OFF", Style::default().fg(Theme::TEXT_MUTED))
+    let checking_str = match lang {
+        Language::Zh => "检测中...",
+        Language::En => "Checking...",
     };
 
-    let mode_str = state
-        .config
-        .as_ref()
-        .and_then(|c| c.mode.clone())
-        .unwrap_or_else(|| "Rule".into());
-
-    let (label_sub, label_mode, label_outbound, title_status, checking_str) = match lang {
-        Language::Zh => (" 订阅: ", " 模式: ", " 出口: ", " 状态 Status ", "检测中..."),
-        Language::En => (" Sub : ", " Mode: ", " Out : ", " Status ", "Checking..."),
-    };
-
-    let card_text = vec![
+    let status_lines = vec![
         Line::from(vec![
-            Span::styled(label_sub, Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled(active_profile, Style::default().fg(Color::Rgb(137, 220, 235)).add_modifier(Modifier::BOLD)),
+            Span::styled(" ──────────────", Style::default().fg(Theme::BORDER_SUBTLE)),
         ]),
         Line::from(vec![
-            Span::styled(label_mode, Style::default().fg(Theme::TEXT_MUTED)),
-            Span::styled(mode_str, Style::default().fg(Theme::MODE_BADGE).add_modifier(Modifier::BOLD)),
-            Span::raw(" | "),
-            tun_status_span,
+            Span::styled(" 📁 ", Style::default().fg(Theme::SECONDARY)),
+            Span::styled(active_profile, Style::default().fg(Theme::TEXT_MAIN)),
         ]),
         Line::from(vec![
-            Span::styled(label_outbound, Style::default().fg(Theme::TEXT_MUTED)),
+            Span::styled(" 🌐 ", Style::default().fg(Theme::WARN_YELLOW)),
             Span::styled(
                 state.outbound_ip.as_deref().unwrap_or(checking_str),
-                Style::default().fg(Color::Rgb(249, 226, 175)),
+                Style::default().fg(Theme::TEXT_SUB),
             ),
         ]),
     ];
 
-    let card_block = Paragraph::new(card_text)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .border_type(BorderType::Rounded)
-                .border_style(Style::default().fg(Theme::BORDER))
-                .title(Span::styled(title_status, Style::default().fg(Theme::TEXT_MUTED))),
-        );
-    f.render_widget(card_block, chunks[2]);
+    f.render_widget(Paragraph::new(status_lines), chunks[3]);
 }
+

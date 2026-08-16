@@ -1,4 +1,5 @@
 use crate::app::AppState;
+use crate::ui::i18n::Language;
 use crate::ui::theme::Theme;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -9,6 +10,7 @@ use ratatui::{
 };
 
 pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
+    let lang = Language::from_str(&state.settings_lang);
 
     let main_chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -23,19 +25,32 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     // TOP BANNER: Config Metadata & Core Runtime Status
     // -------------------------------------------------------------------------
     let core_ver = state.version.as_ref().map(|v| v.version.as_str()).unwrap_or("v1.19.29 (Meta)");
-    let status_str = format!(
-        " ⚙️  MIMO v{}   |   Mihomo Core: {}   |   HTTP: {}   SOCKS: {}   MIXED: {}   |   Config: ~/.config/mimo/config.toml ",
-        env!("CARGO_PKG_VERSION"), core_ver, state.settings_http_port, state.settings_socks_port, state.settings_mixed_port
-    );
+    let (banner_title, status_str) = match lang {
+        Language::Zh => (
+            " ⚙️ 运行时状态与配置 ",
+            format!(
+                " MIMO v{}  ·  Mihomo: {}  ·  HTTP: {}  SOCKS: {}  MIXED: {} ",
+                env!("CARGO_PKG_VERSION"), core_ver, state.settings_http_port, state.settings_socks_port, state.settings_mixed_port
+            )
+        ),
+        Language::En => (
+            " ⚙️ Runtime Status & Config ",
+            format!(
+                " MIMO v{}  ·  Mihomo: {}  ·  HTTP: {}  SOCKS: {}  MIXED: {} ",
+                env!("CARGO_PKG_VERSION"), core_ver, state.settings_http_port, state.settings_socks_port, state.settings_mixed_port
+            )
+        ),
+    };
+
     let top_banner = Paragraph::new(status_str)
         .block(
             Block::default()
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded)
-                .border_style(Style::default().fg(Color::Rgb(137, 220, 235)))
-                .title(Span::styled(" 系统运行状态 & 配置文件路径 ", Style::default().fg(Color::Rgb(137, 220, 235)).add_modifier(Modifier::BOLD))),
+                .border_style(Style::default().fg(Theme::SECONDARY))
+                .title(Span::styled(banner_title, Style::default().fg(Theme::SECONDARY).add_modifier(Modifier::BOLD))),
         )
-        .style(Style::default().fg(Color::Rgb(205, 214, 244)))
+        .style(Style::default().fg(Theme::TEXT_MAIN))
         .alignment(Alignment::Center);
     f.render_widget(top_banner, main_chunks[0]);
 
@@ -72,32 +87,32 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         let prefix = if is_focus { " ▶ " } else { "   " };
         
         let label_style = if is_focus {
-            Style::default().fg(Color::Rgb(249, 226, 175)).add_modifier(Modifier::BOLD)
+            Style::default().fg(Theme::WARN_YELLOW).add_modifier(Modifier::BOLD)
         } else {
-            Style::default().fg(Color::Rgb(205, 214, 244))
+            Style::default().fg(Theme::TEXT_MAIN)
         };
 
         let val_style = if is_btn {
             if is_focus {
-                Style::default().fg(Color::Rgb(17, 17, 27)).bg(Color::Rgb(203, 166, 247)).add_modifier(Modifier::BOLD)
+                Style::default().fg(Color::Rgb(17, 17, 27)).bg(Theme::PRIMARY).add_modifier(Modifier::BOLD)
             } else {
-                Style::default().fg(Color::Rgb(203, 166, 247)).add_modifier(Modifier::BOLD)
+                Style::default().fg(Theme::PRIMARY).add_modifier(Modifier::BOLD)
             }
         } else if is_toggle {
             if value.contains("ON") || value.contains("开启") {
                 Style::default().fg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD)
             } else {
-                Style::default().fg(Color::Rgb(147, 153, 178))
+                Style::default().fg(Theme::TEXT_MUTED)
             }
         } else if is_focus {
-            Style::default().fg(Theme::BORDER_FOCUS).add_modifier(Modifier::BOLD)
+            Style::default().fg(Theme::PRIMARY).add_modifier(Modifier::BOLD)
         } else {
-            Style::default().fg(Color::Rgb(147, 153, 178))
+            Style::default().fg(Theme::TEXT_SUB)
         };
 
         Line::from(vec![
-            Span::styled(prefix.to_string(), if is_focus { Style::default().fg(Theme::BORDER_FOCUS) } else { Style::default() }),
-            Span::styled(format!("{:<26}", label), label_style),
+            Span::styled(prefix.to_string(), if is_focus { Style::default().fg(Theme::PRIMARY) } else { Style::default() }),
+            Span::styled(format!("{:<24}", label), label_style),
             Span::styled(value.to_string(), val_style),
         ])
     };
@@ -105,11 +120,16 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     // -------------------------------------------------------------------------
     // CARD 1: 🌐 网络与代理端口 Network & Proxy Services (Items 0..5)
     // -------------------------------------------------------------------------
+    let title_card1 = match lang {
+        Language::Zh => " 🌐 网络与代理服务 ",
+        Language::En => " 🌐 Network & Ports ",
+    };
+
     let card1_block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(if (0..=5).contains(&state.settings_focus) { Style::default().fg(Theme::BORDER_FOCUS) } else { Style::default().fg(Theme::BORDER) })
-        .title(Span::styled(" 🌐 网络与代理服务 Network & Proxy Services ", Style::default().fg(Color::Rgb(137, 220, 235)).add_modifier(Modifier::BOLD)));
+        .title(Span::styled(title_card1, Style::default().fg(Theme::SECONDARY).add_modifier(Modifier::BOLD)));
 
     let secret_val = if state.settings_focus == 1 {
         format!("{}█", state.settings_secret)
@@ -140,19 +160,24 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     // -------------------------------------------------------------------------
     // CARD 2: 🛡️ DNS 与高级自动化 DNS & Automation (Items 6..10)
     // -------------------------------------------------------------------------
+    let title_card2 = match lang {
+        Language::Zh => " 🛡️ DNS 与自动化 ",
+        Language::En => " 🛡️ DNS & Automation ",
+    };
+
     let card2_block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(if (6..=10).contains(&state.settings_focus) { Style::default().fg(Theme::BORDER_FOCUS) } else { Style::default().fg(Theme::BORDER) })
-        .title(Span::styled(" 🛡️ DNS 与自动化服务 DNS & Automation ", Style::default().fg(Color::Rgb(166, 227, 161)).add_modifier(Modifier::BOLD)));
+        .title(Span::styled(title_card2, Style::default().fg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD)));
 
-    let dns_val = format!("{} [Space 切换]", state.settings_dns_mode);
+    let dns_val = format!("{} [Space]", state.settings_dns_mode);
     let sniff_val = if state.settings_sniffing { "● 开启 ON [Space]" } else { "○ 关闭 OFF [Space]" };
     let tcp_val = if state.settings_tcp_concurrent { "● 开启 ON [Space]" } else { "○ 关闭 OFF [Space]" };
     let auto_sys_val = if state.settings_auto_sysproxy { "● 开启 ON [Space]" } else { "○ 关闭 OFF [Space]" };
     let sub_val = match state.settings_sub_update_hours {
         0 => "手动刷新 Manual [Space]".to_string(),
-        h => format!("每 {} 小时自动更新 [Space]", h),
+        h => format!("每 {} 小时 [Space]", h),
     };
 
     let card2_lines = vec![
@@ -167,19 +192,24 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     f.render_widget(p_card2, left_chunks[1]);
 
     // -------------------------------------------------------------------------
-    // CARD 3: ⚡ 核心服务与提权 Core & System Controls (Items 11..15)
+    // CARD 3: ⚡ 核心服务与控制 Core & System Controls (Items 11..15)
     // -------------------------------------------------------------------------
+    let title_card3 = match lang {
+        Language::Zh => " ⚡ 核心服务控制 ",
+        Language::En => " ⚡ Core & System Controls ",
+    };
+
     let card3_block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(if (11..=15).contains(&state.settings_focus) { Style::default().fg(Theme::BORDER_FOCUS) } else { Style::default().fg(Theme::BORDER) })
-        .title(Span::styled(" ⚡ 核心与高级服务 Core & System Controls ", Style::default().fg(Color::Rgb(249, 226, 175)).add_modifier(Modifier::BOLD)));
+        .title(Span::styled(title_card3, Style::default().fg(Theme::WARN_YELLOW).add_modifier(Modifier::BOLD)));
 
-    let stack_val = format!("{} [Space 切换]", state.settings_tun_stack);
-    let log_val = format!("{} [Space 切换]", state.settings_log_level);
+    let stack_val = format!("{} [Space]", state.settings_tun_stack);
+    let log_val = format!("{} [Space]", state.settings_log_level);
     let lan_val = if state.settings_allow_lan { "● 开启 ON [Space]" } else { "○ 关闭 OFF [Space]" };
     let ipv6_val = if state.settings_ipv6 { "● 开启 ON [Space]" } else { "○ 关闭 OFF [Space]" };
-    let dl_core_val = "[ ⬇️ 自动下载 / 更新 Mihomo 核心 (Enter/Space) ]";
+    let dl_core_val = "[ ⬇️ 自动更新核心 (Enter) ]";
 
     let card3_lines = vec![
         make_row(11, "TUN Network Stack", &stack_val, false, false),
@@ -193,13 +223,18 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     f.render_widget(p_card3, right_chunks[0]);
 
     // -------------------------------------------------------------------------
-    // CARD 4: 🎨 界面与偏好风格 Preferences & Themes (Items 16..18)
+    // CARD 4: 🎨 界面与偏好风格 Preferences & Display (Items 16..18)
     // -------------------------------------------------------------------------
+    let title_card4 = match lang {
+        Language::Zh => " 🎨 界面与偏好风格 ",
+        Language::En => " 🎨 Display & Preferences ",
+    };
+
     let card4_block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(if (16..=18).contains(&state.settings_focus) { Style::default().fg(Theme::BORDER_FOCUS) } else { Style::default().fg(Theme::BORDER) })
-        .title(Span::styled(" 🎨 界面与偏好风格 Preferences & Display ", Style::default().fg(Color::Rgb(203, 166, 247)).add_modifier(Modifier::BOLD)));
+        .title(Span::styled(title_card4, Style::default().fg(Theme::PRIMARY).add_modifier(Modifier::BOLD)));
 
     let lang_val = if state.settings_lang == "zh" { "简体中文 [Space]" } else { "English [Space]" };
     let theme_val = format!("{} [Space]", state.settings_ui_theme);
@@ -224,9 +259,9 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     };
 
     let save_text = if state.settings_focus == 19 {
-        " ▶ [ 💾 保存所有系统设置至 ~/.config/mimo/config.toml (按 Enter 保存) ] ◀ "
+        " ▶ [ 💾 保存所有配置至 ~/.config/mimo/config.toml (Enter) ] ◀ "
     } else {
-        " [ 💾 保存所有系统设置 (Save All Settings) ] "
+        " [ 💾 保存所有配置至 ~/.config/mimo/config.toml ] "
     };
 
     let save_block = Paragraph::new(save_text)
@@ -241,4 +276,5 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
 
     f.render_widget(save_block, main_chunks[2]);
 }
+
 

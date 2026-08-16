@@ -49,11 +49,9 @@ pub async fn handle_core_action(action: &str) -> Result<()> {
     match action.to_lowercase().as_str() {
         "start" => {
             println!("Starting Mihomo core service...");
-            let index = ProfileManager::load_index()?;
-            if let Some(active) = index.active_profile {
-                let dir = ProfileManager::profiles_dir()?;
-                let path = dir.join(format!("{}.yaml", active));
-                CoreProcess::start_with_config(&path)?;
+            let profiles = ProfileManager::list_profiles()?;
+            if let Some(active) = profiles.iter().find(|p| p.is_active).or_else(|| profiles.first()) {
+                CoreProcess::start_with_config(&active.file_path)?;
             } else {
                 CoreProcess::restart()?;
             }

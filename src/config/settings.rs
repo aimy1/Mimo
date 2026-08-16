@@ -86,15 +86,36 @@ impl Settings {
 
     pub fn load() -> Result<Self> {
         let path = Self::config_file_path()?;
-        if path.exists() {
+        let mut cfg: Settings = if path.exists() {
             let content = fs::read_to_string(&path)?;
-            let cfg: Settings = toml::from_str(&content)?;
-            Ok(cfg)
+            toml::from_str(&content).unwrap_or_default()
         } else {
             let cfg = Self::default();
-            cfg.save()?;
-            Ok(cfg)
+            let _ = cfg.save();
+            cfg
+        };
+
+        if let Ok(profiles) = crate::profile::ProfileManager::list_profiles() {
+            if let Some(active) = profiles.iter().find(|p| p.is_active).or_else(|| profiles.first()) {
+                if let Ok(content) = fs::read_to_string(&active.file_path) {
+                    if let Ok(parsed) = crate::profile::ProfileParser::parse_yaml(&content) {
+                        if let Some(ext_ctrl) = parsed.external_controller {
+                            let formatted_url = if ext_ctrl.starts_with("http://") || ext_ctrl.starts_with("https://") {
+                                ext_ctrl
+                            } else {
+                                format!("http://{}", ext_ctrl)
+                            };
+                            cfg.api_url = formatted_url;
+                        }
+                        if parsed.secret.is_some() {
+                            cfg.secret = parsed.secret;
+                        }
+                    }
+                }
+            }
         }
+
+        Ok(cfg)
     }
 
     pub fn save(&self) -> Result<()> {
