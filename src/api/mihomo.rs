@@ -224,6 +224,77 @@ impl MihomoClient {
         Ok(res)
     }
 
+    /// GET /group/{name}/delay
+    pub async fn test_group_delay(
+        &self,
+        group: &str,
+        test_url: Option<&str>,
+        timeout_ms: Option<u64>,
+    ) -> Result<std::collections::HashMap<String, u16>> {
+        let encoded_group = urlencoding::encode(group);
+        let url_param = test_url.unwrap_or("http://www.gstatic.com/generate_204");
+        let timeout_param = timeout_ms.unwrap_or(3000);
+
+        let url = format!(
+            "{}/group/{}/delay?url={}&timeout={}",
+            self.base_url,
+            encoded_group,
+            urlencoding::encode(url_param),
+            timeout_param
+        );
+
+        let res = self
+            .client
+            .get(url)
+            .send()
+            .await?
+            .error_for_status()?
+            .json::<std::collections::HashMap<String, u16>>()
+            .await?;
+
+        Ok(res)
+    }
+
+    /// Fetch public outbound IP address with multi-endpoint fallback
+    pub async fn get_outbound_ip(proxy_port: Option<u16>) -> Result<String> {
+        let endpoints = [
+            "https://api.ipify.org?format=json",
+            "https://api64.ipify.org?format=json",
+            "https://ip.sb",
+            "https://ifconfig.me/ip",
+            "https://icanhazip.com",
+        ];
+
+        let mut builder = Client::builder().timeout(Duration::from_secs(3));
+        if let Some(port) = proxy_port {
+            if let Ok(proxy) = reqwest::Proxy::all(format!("http://127.0.0.1:{}", port)) {
+                builder = builder.proxy(proxy);
+            }
+        }
+        let client = builder.build().unwrap_or_default();
+
+        for url in endpoints {
+            if let Ok(resp) = client.get(url).send().await {
+                if resp.status().is_success() {
+                    if let Ok(text) = resp.text().await {
+                        let trimmed = text.trim();
+                        if trimmed.starts_with('{') {
+                            if let Ok(val) = serde_json::from_str::<serde_json::Value>(trimmed) {
+                                if let Some(ip) = val["ip"].as_str() {
+                                    return Ok(ip.trim().to_string());
+                                }
+                            }
+                        } else if !trimmed.is_empty() && trimmed.len() <= 45 && (trimmed.contains('.') || trimmed.contains(':')) {
+                            return Ok(trimmed.to_string());
+                        }
+                    }
+                }
+            }
+        }
+
+        anyhow::bail!("All IP diagnosis endpoints failed")
+    }
+
     /// DELETE /connections/{id}
     pub async fn close_connection(&self, id: &str) -> Result<()> {
         self.client
@@ -244,3 +315,4 @@ impl MihomoClient {
         Ok(())
     }
 }
+

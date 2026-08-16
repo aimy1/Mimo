@@ -1,5 +1,5 @@
 use crate::models::{LogMessage, TrafficMessage};
-use anyhow::{Context, Result};
+use anyhow::Result;
 use futures_util::StreamExt;
 use tokio::sync::mpsc;
 use tokio_tungstenite::connect_async;
@@ -11,24 +11,30 @@ pub async fn stream_traffic(
     tx: mpsc::Sender<TrafficMessage>,
 ) -> Result<()> {
     let ws_url = convert_to_ws_url(base_url, "/traffic", secret);
-    let (ws_stream, _) = connect_async(&ws_url)
-        .await
-        .context("Failed to connect to Mihomo traffic WebSocket")?;
 
-    let (_, mut read) = ws_stream.split();
-
-    while let Some(msg) = read.next().await {
-        match msg {
-            Ok(Message::Text(text)) => {
-                if let Ok(traffic) = serde_json::from_str::<TrafficMessage>(&text)
-                    && tx.send(traffic).await.is_err() {
-                        break; // Receiver dropped
-                    }
-            }
-            Ok(Message::Close(_)) => break,
-            Err(_) => break,
-            _ => {}
+    loop {
+        if tx.is_closed() {
+            break;
         }
+
+        if let Ok((ws_stream, _)) = connect_async(&ws_url).await {
+            let (_, mut read) = ws_stream.split();
+            while let Some(msg) = read.next().await {
+                match msg {
+                    Ok(Message::Text(text)) => {
+                        if let Ok(traffic) = serde_json::from_str::<TrafficMessage>(&text)
+                            && tx.send(traffic).await.is_err() {
+                                return Ok(()); // Receiver dropped
+                            }
+                    }
+                    Ok(Message::Close(_)) | Err(_) => break,
+                    _ => {}
+                }
+            }
+        }
+
+        // Backoff before reconnecting
+        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
     }
 
     Ok(())
@@ -42,28 +48,35 @@ pub async fn stream_logs(
 ) -> Result<()> {
     let path = format!("/logs?level={}", log_level);
     let ws_url = convert_to_ws_url(base_url, &path, secret);
-    let (ws_stream, _) = connect_async(&ws_url)
-        .await
-        .context("Failed to connect to Mihomo logs WebSocket")?;
 
-    let (_, mut read) = ws_stream.split();
-
-    while let Some(msg) = read.next().await {
-        match msg {
-            Ok(Message::Text(text)) => {
-                if let Ok(log_entry) = serde_json::from_str::<LogMessage>(&text)
-                    && tx.send(log_entry).await.is_err() {
-                        break; // Receiver dropped
-                    }
-            }
-            Ok(Message::Close(_)) => break,
-            Err(_) => break,
-            _ => {}
+    loop {
+        if tx.is_closed() {
+            break;
         }
+
+        if let Ok((ws_stream, _)) = connect_async(&ws_url).await {
+            let (_, mut read) = ws_stream.split();
+            while let Some(msg) = read.next().await {
+                match msg {
+                    Ok(Message::Text(text)) => {
+                        if let Ok(log_entry) = serde_json::from_str::<LogMessage>(&text)
+                            && tx.send(log_entry).await.is_err() {
+                                return Ok(()); // Receiver dropped
+                            }
+                    }
+                    Ok(Message::Close(_)) | Err(_) => break,
+                    _ => {}
+                }
+            }
+        }
+
+        // Backoff before reconnecting
+        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
     }
 
     Ok(())
 }
+
 
 fn convert_to_ws_url(base_url: &str, path: &str, secret: Option<&str>) -> String {
     let mut ws_base = base_url

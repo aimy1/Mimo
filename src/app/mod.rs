@@ -1261,18 +1261,9 @@ impl App {
             Action::FetchVersion => self.fetch_version(),
             Action::FetchOutboundIp => {
                 let tx = self.action_tx.clone();
+                let port = self.state.config.as_ref().and_then(|c| c.mixed_port.or(c.http_port)).or(Some(self.state.settings_http_port));
                 tokio::spawn(async move {
-                    let client = reqwest::Client::builder()
-                        .timeout(Duration::from_secs(3))
-                        .build()
-                        .unwrap_or_default();
-                    let res = match client.get("https://api.ipify.org?format=json").send().await {
-                        Ok(resp) => match resp.json::<serde_json::Value>().await {
-                            Ok(v) => Ok(v["ip"].as_str().unwrap_or("Unknown").to_string()),
-                            Err(e) => Err(e.to_string()),
-                        },
-                        Err(e) => Err(e.to_string()),
-                    };
+                    let res = crate::api::MihomoClient::get_outbound_ip(port).await.map_err(|e| e.to_string());
                     let _ = tx.send(Action::OutboundIpFetched(res)).await;
                 });
             }
@@ -1512,7 +1503,7 @@ impl App {
     }
 
     fn test_selected_group_latency(&self) {
-        let _group = match self.state.selected_group_name() {
+        let group = match self.state.selected_group_name() {
             Some(g) => g.to_string(),
             None => return,
         };
@@ -1520,14 +1511,25 @@ impl App {
         let nodes = self.state.current_group_nodes();
         let client = self.client.clone();
         let tx = self.action_tx.clone();
+        let test_url = self.state.settings_test_url.clone();
 
         tokio::spawn(async move {
+            // 1. Try native core group delay testing API
+            if let Ok(delays) = client.test_group_delay(&group, Some(&test_url), Some(3000)).await {
+                for (node_name, ms) in delays {
+                    let _ = tx.send(Action::LatencyResult { node: node_name, result: Ok(ms) }).await;
+                }
+                return;
+            }
+
+            // 2. Fallback to concurrent individual tests
             for node in nodes {
                 let c = client.clone();
                 let t = tx.clone();
                 let node_name = node.clone();
+                let url = test_url.clone();
                 tokio::spawn(async move {
-                    let delay = c.test_delay(&node_name, None, None).await.map_err(|e| e.to_string());
+                    let delay = c.test_delay(&node_name, Some(&url), Some(3000)).await.map_err(|e| e.to_string());
                     let _ = t.send(Action::LatencyResult { node: node_name, result: delay }).await;
                 });
             }
@@ -1540,8 +1542,9 @@ impl App {
             let client = self.client.clone();
             let tx = self.action_tx.clone();
             let node_name = (*node).clone();
+            let test_url = self.state.settings_test_url.clone();
             tokio::spawn(async move {
-                let delay = client.test_delay(&node_name, None, None).await.map_err(|e| e.to_string());
+                let delay = client.test_delay(&node_name, Some(&test_url), Some(3000)).await.map_err(|e| e.to_string());
                 let _ = tx.send(Action::LatencyResult { node: node_name, result: delay }).await;
             });
         }
@@ -1564,22 +1567,27 @@ impl App {
 
         let client = self.client.clone();
         let tx = self.action_tx.clone();
+        let proxy_port = self.state.config.as_ref().and_then(|c| c.mixed_port.or(c.http_port)).or(Some(self.state.settings_http_port));
 
         for (site_name, url) in sites {
             let site_name = site_name.to_string();
             let url = url.to_string();
             let client = client.clone();
             let tx = tx.clone();
+            let port = proxy_port;
 
             tokio::spawn(async move {
                 let start = std::time::Instant::now();
                 let res = match client.test_delay("GLOBAL", Some(&url), Some(3000)).await {
                     Ok(ms) => Ok(ms),
                     Err(_) => {
-                        let http_client = reqwest::Client::builder()
-                            .timeout(Duration::from_millis(3000))
-                            .build()
-                            .unwrap_or_default();
+                        let mut builder = reqwest::Client::builder().timeout(Duration::from_millis(3000));
+                        if let Some(p) = port {
+                            if let Ok(proxy) = reqwest::Proxy::all(format!("http://127.0.0.1:{}", p)) {
+                                builder = builder.proxy(proxy);
+                            }
+                        }
+                        let http_client = builder.build().unwrap_or_default();
                         if http_client.get(&url).send().await.is_ok() {
                             Ok(start.elapsed().as_millis() as u16)
                         } else {
@@ -1591,6 +1599,7 @@ impl App {
             });
         }
     }
+
 
     async fn close_selected_connection(&mut self) {
         let conns = self.state.filtered_sorted_connections();
