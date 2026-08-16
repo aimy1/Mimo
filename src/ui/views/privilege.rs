@@ -54,8 +54,8 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .unwrap_or_else(|| not_found_str.to_string());
 
     let (label_name, label_status, label_core, btn_grant, btn_revoke, btn_tun, title_card1) = match lang {
-        Language::Zh => ("权限能力: ", "当前状态: ", "核心路径: ", "P: 授权 Root", "R: 撤销权限", "X: TUN 开关", " 🔒 1. TUN 虚拟网卡提权 (CAP_NET_ADMIN) "),
-        Language::En => ("Capability: ", "Status    : ", "Core Path : ", "P: Grant Root", "R: Revoke", "X: Toggle TUN", " 🔒 1. TUN Virtual Adapter Privilege (CAP_NET_ADMIN) "),
+        Language::Zh => ("权限能力: ", "当前状态: ", "核心路径: ", "P: 授权 Root", "R: 撤销权限", "X: TUN 开关", " 1. TUN 虚拟网卡提权 (CAP_NET_ADMIN) "),
+        Language::En => ("Capability: ", "Status    : ", "Core Path : ", "P: Grant Root", "R: Revoke", "X: Toggle TUN", " 1. TUN Virtual Adapter Privilege (CAP_NET_ADMIN) "),
     };
 
     let tun_card_text = vec![
@@ -98,9 +98,10 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
 
     // 2. System Proxy GSettings Card
     let (g_name, g_desc, title_card2) = match lang {
-        Language::Zh => ("GNOME GSettings 代理配置权限", "允许通过快捷键 'p' 开启/关闭桌面系统代理 (HTTP/SOCKS 端口)", " 🌐 2. 桌面系统代理设置 (GSettings) "),
-        Language::En => ("GNOME GSettings Proxy Capability", "Allows toggling system proxy via 'p' (HTTP/SOCKS ports)", " 🌐 2. Desktop System Proxy (GSettings) "),
+        Language::Zh => ("GNOME GSettings 代理配置权限", "允许通过快捷键 'p' 开启/关闭桌面系统代理 (HTTP/SOCKS 端口)", " 2. 桌面系统代理设置 (GSettings) "),
+        Language::En => ("GNOME GSettings Proxy Capability", "Allows toggling system proxy via 'p' (HTTP/SOCKS ports)", " 2. Desktop System Proxy (GSettings) "),
     };
+
 
     let sysproxy_card_text = vec![
         Line::from(vec![

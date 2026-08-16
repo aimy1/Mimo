@@ -18,9 +18,10 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .split(area);
 
     let (str_add, str_update, str_del, title_console) = match lang {
-        Language::Zh => ("a: 添加订阅", "u: 更新订阅", "d: 删除订阅", " 📁 订阅管理 "),
-        Language::En => ("a: Add", "u: Update", "d: Delete", " 📁 Profiles "),
+        Language::Zh => ("a: 添加订阅", "u: 更新订阅", "d: 删除订阅", " 订阅管理 "),
+        Language::En => ("a: Add", "u: Update", "d: Delete", " Profiles "),
     };
+
 
     let btn_add = Span::styled(format!(" [{}] ", str_add), Style::default().fg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD));
     let btn_update = Span::styled(format!(" [{}] ", str_update), Style::default().fg(Theme::WARN_YELLOW).add_modifier(Modifier::BOLD));

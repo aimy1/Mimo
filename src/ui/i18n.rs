@@ -60,12 +60,12 @@ pub fn t(key: &str, lang: Language) -> &str {
             "title_settings" => " 系统设置 ",
             "title_rules" => " 路由规则 ",
 
-            "card_network_services" => " 🌐 网络与代理服务 ",
-            "card_dns_automation" => " 🛡️ DNS 与自动化 ",
-            "card_core_controls" => " ⚡ 核心服务控制 ",
-            "card_ui_preferences" => " 🎨 界面与偏好风格 ",
-            "card_status_diagnostics" => " 🌐 核心与网络出口 ",
-            "card_running_metrics" => " 📊 运行指标 ",
+            "card_network_services" => " 网络与代理服务 ",
+            "card_dns_automation" => " DNS 与自动化 ",
+            "card_core_controls" => " 核心服务控制 ",
+            "card_ui_preferences" => " 界面与偏好风格 ",
+            "card_status_diagnostics" => " 核心与网络出口 ",
+            "card_running_metrics" => " 运行指标 ",
 
             "footer_nav" => " 页面",
             "footer_scroll" => " 滚动",
@@ -133,12 +133,13 @@ pub fn t(key: &str, lang: Language) -> &str {
             "title_settings" => " System Settings ",
             "title_rules" => " Routing Rules ",
 
-            "card_network_services" => " 🌐 Network & Ports ",
-            "card_dns_automation" => " 🛡️ DNS & Automation ",
-            "card_core_controls" => " ⚡ Core & System Controls ",
-            "card_ui_preferences" => " 🎨 Display & Preferences ",
-            "card_status_diagnostics" => " 🌐 Core & Outbound ",
-            "card_running_metrics" => " 📊 Metrics ",
+            "card_network_services" => " Network & Ports ",
+            "card_dns_automation" => " DNS & Automation ",
+            "card_core_controls" => " Core & System Controls ",
+            "card_ui_preferences" => " Display & Preferences ",
+            "card_status_diagnostics" => " Core & Outbound ",
+            "card_running_metrics" => " Metrics ",
+
 
             "footer_nav" => " Tabs",
             "footer_scroll" => " Nav",

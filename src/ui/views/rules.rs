@@ -51,9 +51,10 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .unwrap_or(0);
 
     let title_str = match lang {
-        Language::Zh => format!(" 📋 路由规则 ({} 条) [j/k: 滚动] ", rules_count),
-        Language::En => format!(" 📋 Rules ({}) [j/k: Scroll] ", rules_count),
+        Language::Zh => format!(" 路由规则 ({} 条) [j/k: 滚动] ", rules_count),
+        Language::En => format!(" Rules ({}) [j/k: Scroll] ", rules_count),
     };
+
 
     let border_style = if state.focus_zone == crate::app::state::FocusZone::Workspace {
         Style::default().fg(Theme::BORDER_FOCUS)

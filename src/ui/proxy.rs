@@ -51,8 +51,8 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .collect();
 
     let groups_title = match lang {
-        Language::Zh => " 📂 代理分组 ",
-        Language::En => " 📂 Proxy Groups ",
+        Language::Zh => " 代理分组 ",
+        Language::En => " Proxy Groups ",
     };
 
     let groups_list = List::new(group_items)
@@ -97,8 +97,8 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     // Render Search Bar if active
     if state.is_searching {
         let search_title = match lang {
-            Language::Zh => " 🔍 搜索节点 ",
-            Language::En => " 🔍 Search Nodes ",
+            Language::Zh => " 搜索节点 ",
+            Language::En => " Search Nodes ",
         };
         let search_text = format!(" 搜索: {}█", state.search_query);
         let search_block = Paragraph::new(search_text)
@@ -209,16 +209,17 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
 
     let title_str = match lang {
         Language::Zh => format!(
-            " ⚡ 节点列表 · {} ({} 节点) [Enter:切换 | t:测速 | s:搜索] ",
+            " 节点列表 · {} ({} 节点) [Enter:切换 | t:测速 | s:搜索] ",
             group_name,
             filtered_nodes.len()
         ),
         Language::En => format!(
-            " ⚡ Nodes · {} ({} nodes) [Enter:Select | t:Test | s:Search] ",
+            " Nodes · {} ({} nodes) [Enter:Select | t:Test | s:Search] ",
             group_name,
             filtered_nodes.len()
         ),
     };
+
 
     let nodes_list = List::new(node_items)
         .block(

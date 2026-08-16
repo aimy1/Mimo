@@ -30,8 +30,8 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
 
     if state.is_searching {
         let search_title = match lang {
-            Language::Zh => " 🔍 搜索连接 ",
-            Language::En => " 🔍 Search Connections ",
+            Language::Zh => " 搜索连接 ",
+            Language::En => " Search Connections ",
         };
         let search_text = format!(" 搜索: {}█", state.search_query);
         let search_block = Paragraph::new(search_text)
@@ -96,33 +96,39 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
 
     let title_str = match lang {
         Language::Zh => format!(
-            " 🔗 活跃连接 ({}) · {} [d:断开 | D:全断 | s:排序 | /:搜索] ",
+            " 活跃连接 ({}) · {} [d:断开 | D:全断 | s:排序 | /:搜索] ",
             conn_list.len(),
             sort_label
         ),
         Language::En => format!(
-            " 🔗 Active Connections ({}) · {} [d:Close | D:Close All | s:Sort | /:Search] ",
+            " Connections ({}) · {} [d:Close | D:Close All | s:Sort | /:Search] ",
             conn_list.len(),
             sort_label
         ),
     };
 
+    let border_style = if state.focus_zone == crate::app::state::FocusZone::Workspace {
+        Style::default().fg(Theme::BORDER_FOCUS)
+    } else {
+        Style::default().fg(Theme::BORDER)
+    };
+
     let table = Table::new(
         rows,
         [
-            Constraint::Percentage(25),
-            Constraint::Percentage(15),
-            Constraint::Percentage(15),
-            Constraint::Percentage(25),
-            Constraint::Percentage(20),
+            Constraint::Percentage(32),
+            Constraint::Percentage(18),
+            Constraint::Percentage(16),
+            Constraint::Percentage(18),
+            Constraint::Percentage(16),
         ],
     )
     .header(header)
     .block(
         Block::default()
             .borders(Borders::ALL)
-            .border_type(BorderType::Rounded)
-            .border_style(Style::default().fg(Theme::BORDER))
+            .border_type(ratatui::widgets::BorderType::Rounded)
+            .border_style(border_style)
             .title(title_str),
     )
     .row_highlight_style(Theme::ITEM_SELECTED);
@@ -182,8 +188,8 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     }
 
     let detail_title = match lang {
-        Language::Zh => " 🔍 连接详情 ",
-        Language::En => " 🔍 Connection Detail ",
+        Language::Zh => " 连接详情 ",
+        Language::En => " Connection Detail ",
     };
 
     let detail_block = Paragraph::new(detail_lines)
@@ -196,4 +202,3 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         );
     f.render_widget(detail_block, chunks[1]);
 }
-

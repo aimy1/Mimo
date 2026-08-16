@@ -27,14 +27,14 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     let core_ver = state.version.as_ref().map(|v| v.version.as_str()).unwrap_or("v1.19.29 (Meta)");
     let (banner_title, status_str) = match lang {
         Language::Zh => (
-            " ⚙️ 运行时状态与配置 ",
+            " 运行时状态与配置 ",
             format!(
                 " MIMO v{}  ·  Mihomo: {}  ·  HTTP: {}  SOCKS: {}  MIXED: {} ",
                 env!("CARGO_PKG_VERSION"), core_ver, state.settings_http_port, state.settings_socks_port, state.settings_mixed_port
             )
         ),
         Language::En => (
-            " ⚙️ Runtime Status & Config ",
+            " Runtime Status & Config ",
             format!(
                 " MIMO v{}  ·  Mihomo: {}  ·  HTTP: {}  SOCKS: {}  MIXED: {} ",
                 env!("CARGO_PKG_VERSION"), core_ver, state.settings_http_port, state.settings_socks_port, state.settings_mixed_port
@@ -118,11 +118,11 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     };
 
     // -------------------------------------------------------------------------
-    // CARD 1: 🌐 网络与代理端口 Network & Proxy Services (Items 0..5)
+    // CARD 1: 网络与代理端口 Network & Proxy Services (Items 0..5)
     // -------------------------------------------------------------------------
     let title_card1 = match lang {
-        Language::Zh => " 🌐 网络与代理服务 ",
-        Language::En => " 🌐 Network & Ports ",
+        Language::Zh => " 网络与代理服务 ",
+        Language::En => " Network & Ports ",
     };
 
     let card1_block = Block::default()
@@ -158,11 +158,11 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     f.render_widget(p_card1, left_chunks[0]);
 
     // -------------------------------------------------------------------------
-    // CARD 2: 🛡️ DNS 与高级自动化 DNS & Automation (Items 6..10)
+    // CARD 2: DNS 与高级自动化 DNS & Automation (Items 6..10)
     // -------------------------------------------------------------------------
     let title_card2 = match lang {
-        Language::Zh => " 🛡️ DNS 与自动化 ",
-        Language::En => " 🛡️ DNS & Automation ",
+        Language::Zh => " DNS 与自动化 ",
+        Language::En => " DNS & Automation ",
     };
 
     let card2_block = Block::default()
@@ -192,11 +192,11 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     f.render_widget(p_card2, left_chunks[1]);
 
     // -------------------------------------------------------------------------
-    // CARD 3: ⚡ 核心服务与控制 Core & System Controls (Items 11..15)
+    // CARD 3: 核心服务与控制 Core & System Controls (Items 11..15)
     // -------------------------------------------------------------------------
     let title_card3 = match lang {
-        Language::Zh => " ⚡ 核心服务控制 ",
-        Language::En => " ⚡ Core & System Controls ",
+        Language::Zh => " 核心服务控制 ",
+        Language::En => " Core & System Controls ",
     };
 
     let card3_block = Block::default()
@@ -209,7 +209,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     let log_val = format!("{} [Space]", state.settings_log_level);
     let lan_val = if state.settings_allow_lan { "● 开启 ON [Space]" } else { "○ 关闭 OFF [Space]" };
     let ipv6_val = if state.settings_ipv6 { "● 开启 ON [Space]" } else { "○ 关闭 OFF [Space]" };
-    let dl_core_val = "[ ⬇️ 自动更新核心 (Enter) ]";
+    let dl_core_val = "[ 自动更新核心 (Enter) ]";
 
     let card3_lines = vec![
         make_row(11, "TUN Network Stack", &stack_val, false, false),
@@ -223,11 +223,11 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     f.render_widget(p_card3, right_chunks[0]);
 
     // -------------------------------------------------------------------------
-    // CARD 4: 🎨 界面与偏好风格 Preferences & Display (Items 16..18)
+    // CARD 4: 界面与偏好风格 Preferences & Display (Items 16..18)
     // -------------------------------------------------------------------------
     let title_card4 = match lang {
-        Language::Zh => " 🎨 界面与偏好风格 ",
-        Language::En => " 🎨 Display & Preferences ",
+        Language::Zh => " 界面与偏好风格 ",
+        Language::En => " Display & Preferences ",
     };
 
     let card4_block = Block::default()
@@ -259,10 +259,11 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     };
 
     let save_text = if state.settings_focus == 19 {
-        " ▶ [ 💾 保存所有配置至 ~/.config/mimo/config.toml (Enter) ] ◀ "
+        " ▶ [ 保存所有配置至 ~/.config/mimo/config.toml (Enter) ] ◀ "
     } else {
-        " [ 💾 保存所有配置至 ~/.config/mimo/config.toml ] "
+        " [ 保存所有配置至 ~/.config/mimo/config.toml ] "
     };
+
 
     let save_block = Paragraph::new(save_text)
         .block(

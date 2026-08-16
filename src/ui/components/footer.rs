@@ -56,10 +56,11 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     if let Some((toast_msg, _)) = &state.toast {
         spans.push(Span::raw("   "));
         spans.push(Span::styled(
-            format!(" 🔔 {} ", toast_msg),
+            format!(" {} ", toast_msg),
             Style::default().fg(Color::Rgb(17, 17, 27)).bg(Theme::WARN_YELLOW).add_modifier(Modifier::BOLD),
         ));
     }
+
 
     let paragraph = Paragraph::new(Line::from(spans));
     f.render_widget(paragraph, area);

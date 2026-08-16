@@ -52,8 +52,8 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     };
 
     let (label_ver, label_ip, label_node, label_mode, title_status) = match lang {
-        Language::Zh => ("内核版本: ", "出口公网: ", "当前节点: ", "运行状态: ", " 🌐 核心与网络出口 "),
-        Language::En => ("Core Ver : ", "Outbound : ", "Active   : ", "Status   : ", " 🌐 Core & Outbound "),
+        Language::Zh => ("内核版本: ", "出口公网: ", "当前节点: ", "运行状态: ", " 核心与网络出口 "),
+        Language::En => ("Core Ver : ", "Outbound : ", "Active   : ", "Status   : ", " Core & Outbound "),
     };
 
     let tun_cap_str = if state.is_tun_enabled {
@@ -111,8 +111,8 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     };
 
     let (label_host, label_cpu, label_ram, label_device, title_sysinfo, cores_str) = match lang {
-        Language::Zh => ("主机环境: ", "处理器  : ", "内存占用: ", "网卡状态: ", " 💻 系统硬件与环境 ", "核"),
-        Language::En => ("Host OS : ", "CPU     : ", "Memory  : ", "Device  : ", " 💻 System Info ", "cores"),
+        Language::Zh => ("主机环境: ", "处理器  : ", "内存占用: ", "网卡状态: ", " 系统硬件与环境 ", "核"),
+        Language::En => ("Host OS : ", "CPU     : ", "Memory  : ", "Device  : ", " System Info ", "cores"),
     };
 
     let host_kernel = format!("{} ({})", state.sys_hostname, state.sys_kernel);
@@ -152,9 +152,10 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     // 2. MIDDLE SECTION: Clean Site Connectivity Testing Matrix (No Nested Boxes)
     // -------------------------------------------------------------------------
     let title_site = match lang {
-        Language::Zh => " ⚡ 常用网站连通性 [按 't' 刷新测速] ",
-        Language::En => " ⚡ Site Latency [Press 't' to Test] ",
+        Language::Zh => " 常用网站连通性 [按 't' 刷新测速] ",
+        Language::En => " Site Latency [Press 't' to Test] ",
     };
+
 
     let sites = [
         ("Google", "google.com", Color::Rgb(137, 180, 250)),

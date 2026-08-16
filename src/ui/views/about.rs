@@ -38,7 +38,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
             Span::styled("  |_|  |_|_|_| |_| |_|\\___/    ", Style::default().fg(Theme::WARN_YELLOW).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
-            Span::styled("  ⚡ Minimalist Mihomo Manager ", Style::default().fg(Theme::PRIMARY).add_modifier(Modifier::BOLD)),
+            Span::styled("  Minimalist Mihomo Manager ", Style::default().fg(Theme::PRIMARY).add_modifier(Modifier::BOLD)),
             Span::styled(concat!(" v", env!("CARGO_PKG_VERSION")), Style::default().fg(Theme::TEXT_MUTED)),
         ]),
     ];
@@ -78,8 +78,8 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .unwrap_or_else(|| "Offline".into());
 
     let (label_name, label_author, label_ver, label_core, label_target, label_license, label_repo, title_meta) = match lang {
-        Language::Zh => ("软件名称: ", "软件作者: ", "软件版本: ", "核心版本: ", "运行架构: ", "开源协议: ", "代码仓库: ", " 📌 项目信息 "),
-        Language::En => ("Name    : ", "Author  : ", "Version : ", "Core Ver: ", "Target  : ", "License : ", "GitHub  : ", " 📌 Project Info "),
+        Language::Zh => ("软件名称: ", "软件作者: ", "软件版本: ", "核心版本: ", "运行架构: ", "开源协议: ", "代码仓库: ", " 项目信息 "),
+        Language::En => ("Name    : ", "Author  : ", "Version : ", "Core Ver: ", "Target  : ", "License : ", "GitHub  : ", " Project Info "),
     };
 
     let card1_text = vec![
@@ -124,8 +124,8 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
 
     // Right Top Card: Tech Stack
     let (label_lang, label_ui, label_async, label_theme, title_arch) = match lang {
-        Language::Zh => ("开发语言: ", "终端引擎: ", "异步运行: ", "界面配色: ", " 🏗️ 技术架构 "),
-        Language::En => ("Language: ", "TUI Core: ", "Async   : ", "Theme   : ", " 🏗️ Architecture "),
+        Language::Zh => ("开发语言: ", "终端引擎: ", "异步运行: ", "界面配色: ", " 技术架构 "),
+        Language::En => ("Language: ", "TUI Core: ", "Async   : ", "Theme   : ", " Architecture "),
     };
 
     let card2_text = vec![
@@ -158,9 +158,10 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
 
     // Right Bottom Card: Credits
     let (label_thanks, title_credits) = match lang {
-        Language::Zh => ("鸣谢开源社区:", " 💖 致谢鸣谢 "),
-        Language::En => ("Special Thanks:", " 💖 Acknowledgments "),
+        Language::Zh => ("鸣谢开源社区:", " 致谢鸣谢 "),
+        Language::En => ("Special Thanks:", " Acknowledgments "),
     };
+
 
     let card3_text = vec![
         Line::from(vec![

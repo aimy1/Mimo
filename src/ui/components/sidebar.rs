@@ -21,8 +21,8 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
 
     // 1. Single unified outer container block for the whole sidebar
     let sidebar_title = match lang {
-        Language::Zh => " ⚡ MIMO ",
-        Language::En => " ⚡ MIMO ",
+        Language::Zh => " MIMO ",
+        Language::En => " MIMO ",
     };
 
     let container_block = Block::default()
@@ -106,22 +106,28 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         Language::En => "Checking...",
     };
 
+    let (label_profile, label_ip) = match lang {
+        Language::Zh => ("配置: ", "公网: "),
+        Language::En => ("Profile: ", "Outbound: "),
+    };
+
     let status_lines = vec![
         Line::from(vec![
             Span::styled(" ──────────────", Style::default().fg(Theme::BORDER_SUBTLE)),
         ]),
         Line::from(vec![
-            Span::styled(" 📁 ", Style::default().fg(Theme::SECONDARY)),
+            Span::styled(format!(" {}", label_profile), Style::default().fg(Theme::TEXT_MUTED)),
             Span::styled(active_profile, Style::default().fg(Theme::TEXT_MAIN)),
         ]),
         Line::from(vec![
-            Span::styled(" 🌐 ", Style::default().fg(Theme::WARN_YELLOW)),
+            Span::styled(format!(" {}", label_ip), Style::default().fg(Theme::TEXT_MUTED)),
             Span::styled(
                 state.outbound_ip.as_deref().unwrap_or(checking_str),
                 Style::default().fg(Theme::TEXT_SUB),
             ),
         ]),
     ];
+
 
     f.render_widget(Paragraph::new(status_lines), chunks[3]);
 }

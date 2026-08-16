@@ -23,10 +23,11 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     };
 
     let title_text = if lang == Language::Zh {
-        " 🔒 TUN 虚拟网卡提权授权 "
+        " TUN 虚拟网卡提权授权 "
     } else {
-        " 🔒 TUN Privilege Authorization "
+        " TUN Privilege Authorization "
     };
+
 
     let block = Block::default()
         .borders(Borders::ALL)

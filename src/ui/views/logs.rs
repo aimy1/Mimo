@@ -35,10 +35,10 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         filter_spans.push(Span::raw(" "));
     }
 
-    let btn_clear_str = match lang { Language::Zh => " [ 🧹 c: 清空 ] ", Language::En => " [ 🧹 c: Clear ] " };
+    let btn_clear_str = match lang { Language::Zh => " [ c: 清空 ] ", Language::En => " [ c: Clear ] " };
     filter_spans.push(Span::styled(btn_clear_str, Style::default().fg(Theme::DANGER_RED).add_modifier(Modifier::BOLD)));
 
-    let title_filter = match lang { Language::Zh => " 🔍 日志过滤 ", Language::En => " 🔍 Filter " };
+    let title_filter = match lang { Language::Zh => " 日志过滤 ", Language::En => " Filter " };
     let filter_block = Paragraph::new(Line::from(filter_spans)).block(
         Block::default()
             .borders(Borders::ALL)
@@ -76,9 +76,10 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     }
 
     let title_stream = match lang {
-        Language::Zh => format!(" 📜 核心运行日志 ({}) [j/k: 滚动] ", state.logs.len()),
-        Language::En => format!(" 📜 Core Logs ({}) [j/k: Scroll] ", state.logs.len()),
+        Language::Zh => format!(" 核心运行日志 ({}) [j/k: 滚动] ", state.logs.len()),
+        Language::En => format!(" Core Logs ({}) [j/k: Scroll] ", state.logs.len()),
     };
+
 
     let border_style = if state.focus_zone == crate::app::state::FocusZone::Workspace {
         Style::default().fg(Theme::BORDER_FOCUS)

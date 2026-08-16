@@ -22,9 +22,10 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .split(area);
 
     let (label_up, label_down, title_readout, title_up, title_down) = match lang {
-        Language::Zh => ("▲ 实时上行: ", "▼ 实时下行: ", " 📊 实时网络速率 ", " ▲ 上行速率历史 ", " ▼ 下行速率历史 "),
-        Language::En => ("▲ Upload: ", "▼ Download: ", " 📊 Realtime Throughput ", " ▲ Upload History ", " ▼ Download History "),
+        Language::Zh => ("▲ 实时上行: ", "▼ 实时下行: ", " 实时网络速率 ", " ▲ 上行速率历史 ", " ▼ 下行速率历史 "),
+        Language::En => ("▲ Upload: ", "▼ Download: ", " Realtime Throughput ", " ▲ Upload History ", " ▼ Download History "),
     };
+
 
     // Speed readout banner
     let readout = vec![Line::from(vec![

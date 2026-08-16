@@ -15,9 +15,10 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     f.render_widget(Clear, popup_area);
 
     let modal_title = match lang {
-        Language::Zh => " ➕ 添加订阅配置 ",
-        Language::En => " ➕ Add Subscription Profile ",
+        Language::Zh => " 添加订阅配置 ",
+        Language::En => " Add Subscription Profile ",
     };
+
 
     let modal_block = Block::default()
         .borders(Borders::ALL)
