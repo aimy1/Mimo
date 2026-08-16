@@ -1,8 +1,9 @@
 # Maintainer: aisaniya <aimy1@github.com>
 pkgname=mimo-bin
 _pkgname=mimo
-pkgver=1.3.1
+pkgver=1.4.2
 pkgrel=1
+
 pkgdesc="Minimalist Mihomo Manager - Modern Linux Terminal TUI & CLI Proxy Control Center"
 arch=('x86_64' 'aarch64')
 url="https://github.com/aimy1/Mimo"
