@@ -262,10 +262,20 @@ pub async fn handle_latency(client: &MihomoClient, node: Option<&str>) -> Result
             if (proxy.proxy_type == "Selector" || proxy.proxy_type == "URLTest")
                 && let Some(nodes) = &proxy.all {
                     println!("\x1b[1;33mGroup: {}\x1b[0m", name);
-                    for node_name in nodes {
-                        match client.test_delay(node_name, None, Some(2000)).await {
-                            Ok(ms) => println!("  ├─ {:<25} : \x1b[32m{} ms\x1b[0m", node_name, ms),
-                            Err(_) => println!("  ├─ {:<25} : \x1b[31mTimeout\x1b[0m", node_name),
+                    if let Ok(delays) = client.test_group_delay(&name, None, Some(3000)).await {
+                        for node_name in nodes {
+                            if let Some(ms) = delays.get(node_name) {
+                                println!("  ├─ {:<25} : \x1b[32m{} ms\x1b[0m", node_name, ms);
+                            } else {
+                                println!("  ├─ {:<25} : \x1b[31mTimeout / Offline\x1b[0m", node_name);
+                            }
+                        }
+                    } else {
+                        for node_name in nodes {
+                            match client.test_delay(node_name, None, Some(2000)).await {
+                                Ok(ms) => println!("  ├─ {:<25} : \x1b[32m{} ms\x1b[0m", node_name, ms),
+                                Err(_) => println!("  ├─ {:<25} : \x1b[31mTimeout\x1b[0m", node_name),
+                            }
                         }
                     }
                 }
@@ -273,3 +283,4 @@ pub async fn handle_latency(client: &MihomoClient, node: Option<&str>) -> Result
     }
     Ok(())
 }
+
