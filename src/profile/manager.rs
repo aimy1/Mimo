@@ -113,12 +113,27 @@ impl ProfileManager {
         let parsed = ProfileParser::parse_yaml(&body_content)
             .context("Failed to parse YAML content from subscription")?;
 
+        if parsed.raw_yaml.trim().is_empty() {
+            bail!("Parsed subscription content is empty");
+        }
+
         let profiles_dir = Self::profiles_dir()?;
         let safe_name = name.replace(['/', '\\', ' ', ':'], "_");
         let file_path = profiles_dir.join(format!("{}.yaml", safe_name));
+        let backup_path = profiles_dir.join(format!("{}.yaml.bak", safe_name));
+
+        // Create backup of existing file if present
+        if file_path.exists() {
+            let _ = fs::copy(&file_path, &backup_path);
+        }
         
         // Write raw clean YAML to local storage
-        fs::write(&file_path, &parsed.raw_yaml)?;
+        if let Err(e) = fs::write(&file_path, &parsed.raw_yaml) {
+            if backup_path.exists() {
+                let _ = fs::copy(&backup_path, &file_path);
+            }
+            bail!("Failed to write profile file: {}", e);
+        }
 
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -146,6 +161,7 @@ impl ProfileManager {
         // Set as active profile automatically
         index.active_profile = Some(name.to_string());
         Self::save_index(&index)?;
+
 
         Ok(file_path)
     }
