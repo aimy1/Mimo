@@ -236,7 +236,10 @@ impl App {
                         }
                         KeyCode::Enter => {
                             self.state.is_searching = false;
+                            self.confirm_selection().await;
                         }
+                        KeyCode::Up => self.move_selection(-1),
+                        KeyCode::Down => self.move_selection(1),
                         KeyCode::Char(c) => {
                             self.state.search_query.push(c);
                         }
@@ -327,32 +330,12 @@ impl App {
                     }
                     return Ok(false);
                 }
-                if self.state.is_searching {
-                    match key.code {
-                        KeyCode::Esc => {
-                            self.state.is_searching = false;
-                            self.state.search_query.clear();
-                        }
-                        KeyCode::Enter => {
-                            self.state.is_searching = false;
-                        }
-                        KeyCode::Backspace => {
-                            self.state.search_query.pop();
-                        }
-                        KeyCode::Up => self.move_selection(-1),
-                        KeyCode::Down => self.move_selection(1),
-                        KeyCode::Char(c) => {
-                            self.state.search_query.push(c);
-                        }
-                        _ => {}
-                    }
-                    return Ok(false);
-                }
 
                 // Layer 3: Global Hotkeys, Ctrl Commands & Tab Switching
                 if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
                     match key.code {
                         KeyCode::Char('c') => return Ok(true),
+
                         KeyCode::Char('d') => { self.move_selection(5); return Ok(false); }
                         KeyCode::Char('u') => { self.move_selection(-5); return Ok(false); }
                         KeyCode::Char('s') => {
