@@ -8,7 +8,7 @@ use ratatui::{
     Frame,
 };
 
-pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
+pub fn render(f: &mut Frame, state: &mut AppState, area: Rect) {
     let lang = Language::from_str(&state.settings_lang);
 
     let header_cells = ["INDEX", "TYPE", "PAYLOAD / MATCH RULE", "PROXY TARGET"]
@@ -81,11 +81,12 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     )
     .row_highlight_style(Theme::ITEM_SELECTED);
 
-    let mut table_state = ratatui::widgets::TableState::default();
-    if rules_count > 0 {
-        table_state.select(Some(state.selected_rule_idx));
+    if rules_count == 0 {
+        state.rules_state.select(None);
+    } else {
+        state.rules_state.select(Some(state.selected_rule_idx.min(rules_count - 1)));
     }
 
-    f.render_stateful_widget(table, area, &mut table_state);
+    f.render_stateful_widget(table, area, &mut state.rules_state);
 }
 

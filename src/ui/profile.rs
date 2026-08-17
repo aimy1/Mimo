@@ -5,11 +5,11 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph},
+    widgets::{Block, BorderType, Borders, List, ListItem, Paragraph},
     Frame,
 };
 
-pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
+pub fn render(f: &mut Frame, state: &mut AppState, area: Rect) {
     let lang = Language::from_str(&state.settings_lang);
 
     let chunks = Layout::default()
@@ -124,10 +124,11 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         )
         .highlight_style(Theme::SIDEBAR_SELECTED);
 
-    let mut list_state = ListState::default();
-    if !state.profiles.is_empty() {
-        list_state.select(Some(state.selected_profile_idx));
+    if state.profiles.is_empty() {
+        state.profiles_state.select(None);
+    } else {
+        state.profiles_state.select(Some(state.selected_profile_idx.min(state.profiles.len() - 1)));
     }
-    f.render_stateful_widget(list, chunks[1], &mut list_state);
+    f.render_stateful_widget(list, chunks[1], &mut state.profiles_state);
 }
 

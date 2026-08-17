@@ -1,5 +1,7 @@
 use crate::config::Config;
 use crate::models::*;
+use ratatui::layout::Rect;
+use ratatui::widgets::{ListState, TableState};
 use std::collections::{HashMap, VecDeque};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -162,6 +164,17 @@ pub struct AppState {
 
     // Toast Message
     pub toast: Option<(String, std::time::Instant)>,
+
+    // Persistent View States for Scroll Offsets & Hit-testing
+    pub proxies_groups_state: ListState,
+    pub proxies_nodes_state: ListState,
+    pub profiles_state: ListState,
+    pub rules_state: TableState,
+    pub connections_state: TableState,
+
+    // Layout & Hit-testing Metadata
+    pub last_area: Rect,
+    pub last_click: Option<(std::time::Instant, u16, u16)>,
 }
 
 impl Default for AppState {
@@ -256,6 +269,13 @@ impl Default for AppState {
             log_scroll: 0,
             log_filter: "all".to_string(),
             toast: None,
+            proxies_groups_state: ListState::default(),
+            proxies_nodes_state: ListState::default(),
+            profiles_state: ListState::default(),
+            rules_state: TableState::default(),
+            connections_state: TableState::default(),
+            last_area: Rect::default(),
+            last_click: None,
         }
     }
 }

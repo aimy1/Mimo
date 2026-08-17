@@ -11,7 +11,7 @@ use ratatui::{
     Frame,
 };
 
-pub fn render(f: &mut Frame, state: &AppState) {
+pub fn render(f: &mut Frame, state: &mut AppState) {
     let root_layout = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([

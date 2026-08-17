@@ -5,11 +5,11 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph},
+    widgets::{Block, BorderType, Borders, List, ListItem, Paragraph},
     Frame,
 };
 
-pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
+pub fn render(f: &mut Frame, state: &mut AppState, area: Rect) {
     let lang = Language::from_str(&state.settings_lang);
 
     let chunks = Layout::default()
@@ -65,11 +65,12 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         )
         .highlight_style(Theme::SIDEBAR_SELECTED);
 
-    let mut group_list_state = ListState::default();
-    if !state.proxy_groups.is_empty() {
-        group_list_state.select(Some(state.selected_group_idx));
+    if state.proxy_groups.is_empty() {
+        state.proxies_groups_state.select(None);
+    } else {
+        state.proxies_groups_state.select(Some(state.selected_group_idx.min(state.proxy_groups.len() - 1)));
     }
-    f.render_stateful_widget(groups_list, chunks[0], &mut group_list_state);
+    f.render_stateful_widget(groups_list, chunks[0], &mut state.proxies_groups_state);
 
     // 2. Render Right Pane: Node List with Protocol & Latency Pills
     let group_name = state.selected_group_name().unwrap_or("None");
@@ -231,10 +232,11 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         )
         .highlight_style(Theme::ITEM_SELECTED);
 
-    let mut node_list_state = ListState::default();
-    if !filtered_nodes.is_empty() {
-        node_list_state.select(Some(state.selected_node_idx));
+    if filtered_nodes.is_empty() {
+        state.proxies_nodes_state.select(None);
+    } else {
+        state.proxies_nodes_state.select(Some(state.selected_node_idx.min(filtered_nodes.len() - 1)));
     }
-    f.render_stateful_widget(nodes_list, right_chunks[1], &mut node_list_state);
+    f.render_stateful_widget(nodes_list, right_chunks[1], &mut state.proxies_nodes_state);
 }
 

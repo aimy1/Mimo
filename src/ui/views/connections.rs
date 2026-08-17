@@ -5,11 +5,11 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, BorderType, Borders, Paragraph, Row, Table, TableState},
+    widgets::{Block, BorderType, Borders, Paragraph, Row, Table},
     Frame,
 };
 
-pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
+pub fn render(f: &mut Frame, state: &mut AppState, area: Rect) {
     let lang = Language::from_str(&state.settings_lang);
 
     let chunks = Layout::default()
@@ -50,42 +50,48 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .map(|h| ratatui::widgets::Cell::from(*h).style(Style::default().fg(Theme::SECONDARY).add_modifier(Modifier::BOLD)));
     let header = Row::new(header_cells).height(1).bottom_margin(1);
 
-    let conn_list = state.filtered_sorted_connections();
+    // Extract connection rows and selected connection data before mutating state
+    let (rows, conn_len, selected_detail) = {
+        let conn_list = state.filtered_sorted_connections();
+        let len = conn_list.len();
+        let selected_item = conn_list.get(state.selected_conn_idx).map(|c| (*c).clone());
 
-    let mut rows = Vec::new();
-    for conn in &conn_list {
-        let host = conn
-            .metadata
-            .host
-            .as_deref()
-            .filter(|h| !h.is_empty())
-            .or(conn.metadata.destination_ip.as_deref())
-            .unwrap_or("Unknown");
+        let mut rows = Vec::new();
+        for conn in &conn_list {
+            let host = conn
+                .metadata
+                .host
+                .as_deref()
+                .filter(|h| !h.is_empty())
+                .or(conn.metadata.destination_ip.as_deref())
+                .unwrap_or("Unknown");
 
-        let process = conn
-            .metadata
-            .process
-            .as_deref()
-            .unwrap_or("-");
+            let process = conn
+                .metadata
+                .process
+                .as_deref()
+                .unwrap_or("-");
 
-        let rule = conn.rule.as_deref().unwrap_or("Match");
+            let rule = conn.rule.as_deref().unwrap_or("Match");
 
-        let chains_str = conn.chains.join(" → ");
+            let chains_str = conn.chains.join(" → ");
 
-        let bandwidth = format!(
-            "↑ {}  ↓ {}",
-            format_bytes(conn.upload),
-            format_bytes(conn.download)
-        );
+            let bandwidth = format!(
+                "↑ {}  ↓ {}",
+                format_bytes(conn.upload),
+                format_bytes(conn.download)
+            );
 
-        rows.push(Row::new(vec![
-            host.to_string(),
-            process.to_string(),
-            rule.to_string(),
-            chains_str,
-            bandwidth,
-        ]).style(Style::default().fg(Theme::TEXT_MAIN)));
-    }
+            rows.push(Row::new(vec![
+                host.to_string(),
+                process.to_string(),
+                rule.to_string(),
+                chains_str,
+                bandwidth,
+            ]).style(Style::default().fg(Theme::TEXT_MAIN)));
+        }
+        (rows, len, selected_item)
+    };
 
     let sort_label = match (state.sort_connections_by_traffic, lang) {
         (true, Language::Zh) => "流量降序",
@@ -97,12 +103,12 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     let title_str = match lang {
         Language::Zh => format!(
             " 活跃连接 ({}) · {} [d:断开 | D:全断 | s:排序 | /:搜索] ",
-            conn_list.len(),
+            conn_len,
             sort_label
         ),
         Language::En => format!(
             " Connections ({}) · {} [d:Close | D:Close All | s:Sort | /:Search] ",
-            conn_list.len(),
+            conn_len,
             sort_label
         ),
     };
@@ -133,16 +139,17 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     )
     .row_highlight_style(Theme::ITEM_SELECTED);
 
-    let mut table_state = TableState::default();
-    if !conn_list.is_empty() {
-        table_state.select(Some(state.selected_conn_idx.min(conn_list.len() - 1)));
+    if conn_len == 0 {
+        state.connections_state.select(None);
+    } else {
+        state.connections_state.select(Some(state.selected_conn_idx.min(conn_len - 1)));
     }
 
-    f.render_stateful_widget(table, top_chunks[1], &mut table_state);
+    f.render_stateful_widget(table, top_chunks[1], &mut state.connections_state);
 
     // Detail Inspector Box
     let mut detail_lines = Vec::new();
-    if let Some(conn) = conn_list.get(state.selected_conn_idx) {
+    if let Some(conn) = selected_detail {
         let meta = &conn.metadata;
         let host_ip = format!(
             "Host: {} ({}:{})",

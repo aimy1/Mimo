@@ -7,6 +7,7 @@ use tokio::sync::mpsc;
 use tokio::time::interval;
 
 pub mod action;
+pub mod mouse;
 pub mod state;
 
 pub use state::{AppState, FocusZone, ProxySubFocus, Tab};
@@ -113,7 +114,10 @@ impl App {
                 }
             }
 
-            terminal.draw(|f| crate::ui::render(f, &self.state))?;
+            terminal.draw(|f| {
+                self.state.last_area = f.area();
+                crate::ui::render(f, &mut self.state);
+            })?;
         }
 
         Ok(())
@@ -645,173 +649,7 @@ impl App {
             }
 
             Action::Mouse(mouse) => {
-                use crossterm::event::{MouseButton, MouseEventKind};
-                if self.state.show_tun_modal {
-                    if let MouseEventKind::Down(MouseButton::Left) = mouse.kind
-                        && !self.state.is_granting_privilege {
-                            if !self.state.tun_password_input.is_empty() {
-                                let pass = self.state.tun_password_input.clone();
-                                let _ = self.action_tx.try_send(Action::GrantTunPrivilegeWithPassword(pass));
-                            } else {
-                                self.state.tun_input_focus = 0;
-                            }
-                        }
-                    return Ok(false);
-                }
-                match mouse.kind {
-                    MouseEventKind::ScrollDown => self.move_selection(1),
-                    MouseEventKind::ScrollUp => self.move_selection(-1),
-                    MouseEventKind::Down(MouseButton::Left) => {
-                        let col = mouse.column;
-                        let row = mouse.row;
-
-                        // 1. Click on Left Sidebar Navigation Bar (Column < 18)
-                        if col < 18 {
-                            if (4..=14).contains(&row) {
-                                let tab_idx = (row - 5) as usize;
-                                if let Some(tab) = Tab::ALL.get(tab_idx) {
-                                    self.state.active_tab = *tab;
-                                    self.state.focus_zone = FocusZone::Sidebar;
-                                }
-                            }
-                        }
-                        // 2. Click on Top Control Pills Bar (Row <= 2, Column >= 18)
-                        else if row <= 2 {
-                            if (18..42).contains(&col) {
-                                self.cycle_mode();
-                            } else if (42..66).contains(&col) {
-                                let _ = self.action_tx.try_send(Action::ToggleSystemProxy);
-                            } else if (66..84).contains(&col) {
-                                let _ = self.action_tx.try_send(Action::ToggleTunMode);
-                            } else if col >= 84 {
-                                let _ = self.action_tx.try_send(Action::RestartCore);
-                            }
-                        }
-                        // 3. Tab Specific Workspace Clicks (Switches Focus to Workspace)
-                        else {
-                            self.state.focus_zone = FocusZone::Workspace;
-
-                            if self.state.active_tab == Tab::Dashboard {
-                                if (10..=16).contains(&row) {
-                                    self.test_all_sites_latency();
-                                }
-                            } else if self.state.active_tab == Tab::Settings {
-                                if col < 55 {
-                                    if (4..=6).contains(&row) {
-                                        self.state.settings_focus = 0;
-                                    } else if (7..=9).contains(&row) {
-                                        self.state.settings_focus = 1;
-                                    } else if (10..=12).contains(&row) {
-                                        self.state.settings_focus = 2;
-                                    } else if (13..=15).contains(&row) {
-                                        self.state.settings_focus = 3;
-                                    } else if row >= 16 {
-                                        self.state.settings_focus = 4;
-                                    }
-                                } else {
-                                    if (4..=6).contains(&row) {
-                                        self.state.settings_focus = 5;
-                                        self.state.settings_tun_stack = match self.state.settings_tun_stack.as_str() {
-                                            "system" => "gvisor".into(),
-                                            "gvisor" => "lwip".into(),
-                                            _ => "system".into(),
-                                        };
-                                    } else if (7..=9).contains(&row) {
-                                        self.state.settings_focus = 6;
-                                        self.state.settings_log_level = match self.state.settings_log_level.as_str() {
-                                            "info" => "warning".into(),
-                                            "warning" => "error".into(),
-                                            "error" => "debug".into(),
-                                            "debug" => "silent".into(),
-                                            _ => "info".into(),
-                                        };
-                                    } else if (10..=12).contains(&row) {
-                                        self.state.settings_focus = 7;
-                                        self.state.settings_allow_lan = !self.state.settings_allow_lan;
-                                    } else if (13..=15).contains(&row) {
-                                        self.state.settings_focus = 8;
-                                        self.state.settings_ipv6 = !self.state.settings_ipv6;
-                                    } else if (16..=18).contains(&row) {
-                                        self.state.settings_focus = 9;
-                                        self.state.settings_lang = if self.state.settings_lang == "zh" { "en".into() } else { "zh".into() };
-                                    } else if (19..=21).contains(&row) {
-                                        self.state.settings_focus = 10;
-                                        self.state.settings_refresh_ms = match self.state.settings_refresh_ms {
-                                            500 => 1000,
-                                            1000 => 2000,
-                                            _ => 500,
-                                        };
-                                    } else if row >= 22 {
-                                        self.state.settings_focus = 11;
-                                        let _ = self.action_tx.try_send(Action::SaveSettings);
-                                    }
-                                }
-                            } else if self.state.active_tab == Tab::Profiles {
-                                if row <= 5 {
-                                    if (18..35).contains(&col) {
-                                        self.state.profile_name_input.clear();
-                                        self.state.profile_url_input.clear();
-                                        self.state.profile_input_focus = 0;
-                                        self.state.show_profile_input = true;
-                                    } else if (35..52).contains(&col) {
-                                        if let Some(p) = self.state.profiles.get(self.state.selected_profile_idx)
-                                            && let Some(url) = p.url.clone() {
-                                                let name = p.name.clone();
-                                                let _ = self.action_tx.try_send(Action::AddProfile { name, url });
-                                            }
-                                    } else if (52..68).contains(&col)
-                                        && let Some(p) = self.state.profiles.get(self.state.selected_profile_idx) {
-                                            let name = p.name.clone();
-                                            let _ = self.action_tx.try_send(Action::DeleteProfile(name));
-                                        }
-                                } else {
-                                    let click_idx = (row - 5) as usize;
-                                    if click_idx < self.state.profiles.len() {
-                                        self.state.selected_profile_idx = click_idx;
-                                        self.confirm_selection().await;
-                                    }
-                                }
-                            } else if self.state.active_tab == Tab::Proxies {
-                                if col < 50 {
-                                    self.state.proxy_sub_focus = ProxySubFocus::Groups;
-                                    if row >= 4 {
-                                        let click_idx = (row - 4) as usize;
-                                        if click_idx < self.state.proxy_groups.len() {
-                                            self.state.selected_group_idx = click_idx;
-                                            self.state.selected_node_idx = 0;
-                                        }
-                                    }
-                                } else {
-                                    self.state.proxy_sub_focus = ProxySubFocus::Nodes;
-                                    if row >= 4 {
-                                        let click_idx = (row - 4) as usize;
-                                        let nodes = self.state.filtered_group_nodes();
-                                        if click_idx < nodes.len() {
-                                            self.state.selected_node_idx = click_idx;
-                                            self.confirm_selection().await;
-                                        }
-                                    }
-                                }
-                            } else if self.state.active_tab == Tab::Rules {
-                                if row >= 4 {
-                                    let click_idx = (row - 4) as usize;
-                                    if let Some(resp) = &self.state.rules_resp
-                                        && click_idx < resp.rules.len() {
-                                            self.state.selected_rule_idx = click_idx;
-                                        }
-                                }
-                            } else if self.state.active_tab == Tab::Connections
-                                && row >= 4 {
-                                    let click_idx = (row - 4) as usize;
-                                    if let Some(resp) = &self.state.connections_resp
-                                        && click_idx < resp.connections.len() {
-                                            self.state.selected_conn_idx = click_idx;
-                                        }
-                                }
-                        }
-                    }
-                    _ => {}
-                }
+                mouse::handle_mouse_event(self, mouse).await?;
             }
 
             Action::VersionFetched(res) => match res {
@@ -1412,7 +1250,7 @@ impl App {
         }
     }
 
-    async fn confirm_selection(&mut self) {
+    pub(crate) async fn confirm_selection(&mut self) {
         match self.state.active_tab {
             Tab::Proxies => {
                 if self.state.proxy_sub_focus == ProxySubFocus::Groups {
@@ -1461,7 +1299,7 @@ impl App {
         }
     }
 
-    fn cycle_mode(&mut self) {
+    pub(crate) fn cycle_mode(&mut self) {
         let current = self
             .state
             .config
@@ -1485,7 +1323,7 @@ impl App {
         });
     }
 
-    fn test_selected_group_latency(&self) {
+    pub(crate) fn test_selected_group_latency(&self) {
         let group = match self.state.selected_group_name() {
             Some(g) => g.to_string(),
             None => return,
@@ -1519,7 +1357,7 @@ impl App {
         });
     }
 
-    fn test_single_node_latency(&self) {
+    pub(crate) fn test_single_node_latency(&self) {
         let nodes = self.state.display_group_nodes();
         if let Some(node) = nodes.get(self.state.selected_node_idx) {
             let client = self.client.clone();
@@ -1583,8 +1421,7 @@ impl App {
         }
     }
 
-
-    async fn close_selected_connection(&mut self) {
+    pub(crate) async fn close_selected_connection(&mut self) {
         let conns = self.state.filtered_sorted_connections();
         let id = match conns.get(self.state.selected_conn_idx) {
             Some(conn) => conn.id.clone(),
