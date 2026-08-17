@@ -1,110 +1,157 @@
-# ⚡ Mimo (Minimalist Mihomo Manager)
-
 <div align="center">
 
-![Author](https://img.shields.io/badge/Author-aisaniya-purple.svg?style=for-the-badge)
-![Rust](https://img.shields.io/badge/Language-Rust--2024-orange.svg?style=for-the-badge&logo=rust)
-![Ratatui](https://img.shields.io/badge/UI-Ratatui%20v0.29-blue.svg?style=for-the-badge)
-![Core](https://img.shields.io/badge/Core-Mihomo%20%2F%20Clash%20Meta-red.svg?style=for-the-badge)
-![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)
+```text
+ ╭────────────────────────────────────────────────────────────────────────╮
+ │   ███╗   ███╗██╗███╗   ███╗ ██████╗       ⚡ MINIMALIST MIHOMO MANAGER │
+ │   ████╗ ████║██║████╗ ████║██╔═══██╗      Linux Terminal TUI & CLI    │
+ │   ██╔████╔██║██║██╔████╔██║██║   ██║      Catppuccin Mocha · Rust     │
+ │   ██║╚██╔╝██║██║██║╚██╔╝██║██║   ██║      Cold Start <10ms · ~5MB RAM │
+ │   ██║ ╚═╝ ██║██║██║ ╚═╝ ██║╚██████╔╝                                  │
+ │   ╚═╝     ╚═╝╚═╝╚═╝     ╚═╝ ╚═════╝       v1.4.3 · Modern Linux Proxy  │
+ ╰────────────────────────────────────────────────────────────────────────╯
+```
+
+# ⚡ Mimo · Minimalist Modern Linux Terminal Proxy Manager
+
+[![Release](https://img.shields.io/github/v/release/aimy1/Mimo?style=flat-square&color=cba6f7&label=Release)](https://github.com/aimy1/Mimo/releases)
+[![Rust](https://img.shields.io/badge/Language-Rust%202024-fab387?style=flat-square&logo=rust)](https://www.rust-lang.org/)
+[![Ratatui](https://img.shields.io/badge/TUI-Ratatui%20v0.29-89b4fa?style=flat-square)](https://ratatui.rs/)
+[![Core](https://img.shields.io/badge/Core-Mihomo%20%2F%20Clash.Meta-a6e3a1?style=flat-square)](https://github.com/MetaCubeX/mihomo)
+[![License](https://img.shields.io/badge/License-MIT-94e2d5?style=flat-square)](LICENSE)
 
 <p align="center">
-  <b>A Modern, Ultra-Lightweight Linux Terminal TUI & CLI Proxy Management Center</b><br>
-  <b>Catppuccin Mocha Dark Aesthetics | Comparable to GUI Clash Clients | 100% Bilingual i18n</b>
+  <b>An Ultra-Lightweight, Lightning-Fast Linux Terminal TUI & CLI Proxy Management Center</b><br>
+  <b>Catppuccin Mocha Dark Aesthetics · Dual Vim Keyboard & Full Mouse Engine · 100% Bilingual i18n</b>
 </p>
 
-[ 🇨🇳 简体中文文档 ](README.md) | [ 🇺🇸 English Documentation (Current) ](README_EN.md)
+[ 🇨🇳 简体中文文档 ](README.md) &nbsp;|&nbsp; [ 🇺🇸 English Documentation (Current) ](README_EN.md)
 
 </div>
 
 ---
 
-## 🌟 Key Features
+## 🖥️ TUI Aesthetic Preview
 
-- **⚡ Ultra-Lightweight & Instant Launch**: Powered natively by Rust + Ratatui, **cold start latency is <10ms, memory footprint is only ~5MB**, with near-zero CPU usage.
-- **🎨 Catppuccin Mocha Aesthetics**: Re-architected with cohesive unified sidebar containers and status header pills. Zero visual clutter, no nested box-in-box borders, and smooth color hierarchies.
-- **🛡️ Native Linux System Interception (TUN Mode)**: Transparently routes 100% of system TCP/UDP/DNS traffic with Polkit GUI / Sudo elevation, live interface state, and network stack switching (`system`/`gvisor`/`lwip`).
-- **⌨️ Fluid Vim / Lazygit 4-Way Navigation**: Seamless `j/k/h/l` and arrow key navigation, sidebar ↔ workspace focus alternating, `1-0` tab shortcuts, and instant `/` fuzzy searching.
-- **🌐 Website & Service Latency Matrix**: Built-in latency matrix for popular endpoints (Google, GitHub, YouTube, OpenAI, etc.) with concurrent one-key testing.
-- **📁 Robust Subscription Management**: Supports HTTP/HTTPS subscription fetching (smart parsing of Base64 and standard YAML), instant profile activation, and hot reloading.
-- **⚙️ Comprehensive Settings Dashboard**: Configure ports, enhanced DNS mode (`fake-ip`/`redir-host`), auto-launch sysproxy, update intervals, TUN stack, and UI theme presets.
-- **🌐 Complete Bilingual Internationalization (i18n)**: Seamless instant switching between English and Simplified Chinese across all 10 tabs and modals.
-
----
-
-## 📊 10 Workspace Tabs
-
-| # | Tab | Description |
-| :--- | :--- | :--- |
-| **1** | **Dashboard** | Core process status, outbound public IP diagnostics, website latency matrix, and realtime traffic sparklines |
-| **2** | **Proxies** | Protocol badges (`SS`/`Vmess`/`Vless`/`Trojan`/`Hysteria2`/`Tuic`), single/batch latency tests (`d`/`t`), latency sorting (`o`), and search (`/`) |
-| **3** | **Profiles** | Subscription management (Add/Update/Delete), Base64 & YAML parsing, profile switching and hot reload |
-| **4** | **Rules** | Active routing rules inspection (`DOMAIN-SUFFIX`, `GEOIP`, `IP-CIDR`, etc.) and proxy group target mappings |
-| **5** | **Connections** | Live TCP/UDP connections monitor, sort by traffic (`s`), close connection (`d`), and kill all active sockets (`Shift+D`) |
-| **6** | **Traffic** | High-precision realtime upload/download rate gauges and smoothed historical trend sparklines |
-| **7** | **Logs** | Realtime WebSocket core logs stream with level filtering (`ALL`/`INFO`/`WARN`/`ERR`/`DBG`) and clear button (`c`) |
-| **8** | **Settings** | Adjust REST API, secret tokens, proxy ports, DNS enhanced mode, auto-sysproxy, and visual themes |
-| **9** | **Privileges** | Inspect Linux `CAP_NET_ADMIN` capability and Desktop GSettings proxy permissions with Sudo/Polkit authorization |
-| **10** | **About** | Version info, architecture metadata, technology stack, and open source acknowledgments |
+```text
+╭─ ⚡ MIMO 1.4.3 ─╮╭─ [Mode: RULE] ─── [SysProxy: OFF] ── [TUN: ON (gvisor)] ─── [↑ 12.4 KB/s  ↓ 1.2 MB/s] ──╮
+│ 1 Dashboard     ││ Proxy Groups (3)         │ Nodes · PROXY (28 nodes) · Lowest Latency [Enter:Select | t:Test] │
+│>2 Proxies       ││ ╭──────────────────────╮ │ ╭─────────────────────────────────────────────────────────────╮ │
+│ 3 Profiles      ││ │ ● PROXY              │ │ │ ● [Hysteria2] 🇭🇰 Hong Kong 01 - Premium 10x       128 ms │ │
+│ 4 Rules         ││ │   AUTO-SELECT        │ │ │   [Vmess]     🇯🇵 Japan 02 - BGP Direct            164 ms │ │
+│ 5 Connections   ││ │   DIRECT             │ │ │   [Vless]     🇸🇬 Singapore 01 - Ultra-Fast        192 ms │ │
+│ 6 Traffic       ││ │                      │ │ │   [Trojan]    🇺🇸 US 05 - Los Angeles              235 ms │ │
+│ 7 Logs          ││ │                      │ │ │   [SS]        🇩🇪 Germany 01 - Backup              310 ms │ │
+│ 8 Settings      ││ ╰──────────────────────╯ │ ╰─────────────────────────────────────────────────────────────╯ │
+│ 9 Privileges    │╰────────────────────────────────────────────────────────────────────────────────────────────╯
+│ 0 About         │╭────────────────────────────────────────────────────────────────────────────────────────────╮
+╰─────────────────╯│ [Tab:Cycle] [j/k:Move] [h/l:Panes] [m:Mode] [p:Proxy] [x:TUN] [o:Sort] [/:Search] [q:Quit]  │
+                   ╰────────────────────────────────────────────────────────────────────────────────────────────╯
+```
 
 ---
 
-## 🚀 Installation & Getting Started
+## 🌟 Design Philosophy & Highlights
 
-### 1. Build and Install via Cargo (Recommended)
+| Pillar | Highlights |
+| :--- | :--- |
+| ⚡ **Instant & Ultra-Lightweight** | Built with native Rust + Ratatui. **Cold start latency <10ms, memory footprint ~5MB**, near-zero CPU idle. |
+| 🎨 **Catppuccin Aesthetics** | Includes Catppuccin Mocha, Nord, TokyoNight, and Gruvbox presets. Border clutter eliminated with clean status badges. |
+| 🖱️ **Dual Input Engine** | **Vim Workflow** (`j/k/h/l`, `g/G`, `/`) + **Complete Mouse Interactions** (dynamic hit-testing, context-aware scrolling, double-click activation, right-click actions). |
+| 🛡️ **Transparent System TUN** | Transparently intercepts 100% TCP/UDP/DNS traffic with `system`, `gvisor`, and `lwip` network stacks & Polkit / Sudo privilege workflows. |
+| 🐧 **Multi-Desktop Integration** | Seamless automatic integration with **KDE Plasma 5 / 6** (`kioslaverc` + KIO signals) & **GNOME / Cinnamon** (`gsettings`). |
+| 🌐 **100% Bilingual i18n** | Full instant hot-switching between English and Simplified Chinese across all 10 tabs, dialogs, and metrics. |
 
-Ensure Rust & Cargo (1.80+) are installed:
+---
+
+## 📊 10 Feature Workspaces
+
+```text
+┌── [1] Dashboard ───── Core status · Outbound IP diagnosis · Multi-site latency matrix · Realtime traffic graphs
+├── [2] Proxies ─────── Protocol color badges · Single/group delay tests · Tri-mode sorting (Default/Latency/Name) · Protocol search
+├── [3] Profiles ────── Online subscription management · Smart Base64 & YAML parser · Hot reload & activation
+├── [4] Rules ───────── Detailed routing rules inspection (`DOMAIN-SUFFIX`, `GEOIP`, `IP-CIDR`, etc.) · Live filter
+├── [5] Connections ─── Live TCP/UDP socket monitor · Sort by traffic · Single socket close & kill all connections
+├── [6] Traffic ─────── High-precision realtime speed gauges · Smoothed historical sparklines · Peak stats
+├── [7] Logs ────────── Realtime WebSocket core logs · Multi-level filtering (`ALL`/`INFO`/`WARN`/`ERR`/`DBG`) · Auto-scroll
+├── [8] Settings ────── REST API & secret tokens · Port config · DNS enhanced mode (`fake-ip`/`redir-host`) · Themes
+├── [9] Privileges ──── Linux `CAP_NET_ADMIN` capability · Desktop GSettings & KIO permissions · One-click elevation
+└── [0] About ───────── Software version · Kernel architecture metadata · Technology stack & acknowledgments
+```
+
+---
+
+## 🚀 Quick Start
+
+### Option 1: Official One-Line Installer (Recommended)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/aimy1/Mimo/main/scripts/install.sh | bash
+```
+
+### Option 2: Build from Source via Cargo
 
 ```bash
 # Clone the repository
 git clone https://github.com/aimy1/Mimo.git
 cd Mimo
 
-# Compile and install release binary to Cargo path (~/.cargo/bin/mimo)
-cargo install --path .
+# Compile and install to system path (~/.local/bin/mimo)
+cargo build --release
+install -m 755 target/release/mimo ~/.local/bin/mimo
 ```
 
-### 2. Launch Mimo
+### Option 3: Linux Distribution Packages
 
-Run the binary directly in your terminal:
+| Distro Family | Installation Method | Architecture |
+| :--- | :--- | :--- |
+| **Arch Linux / Manjaro** | `yay -S mimo-bin` or `makepkg -si` (in `packaging/aur`) | `x86_64`, `aarch64` |
+| **Debian / Ubuntu** | `sudo dpkg -i mimo_1.4.3_amd64.deb` | `amd64`, `arm64`, `armhf` |
+| **Fedora / RHEL** | `sudo dnf install mimo-1.4.3-1.x86_64.rpm` | `x86_64`, `aarch64` |
+| **Universal Binary** | Extract `mimo-1.4.3-x86_64.tar.gz` and run | `x86_64`, `aarch64`, `armv7` |
 
-```bash
-mimo
+---
+
+## 🎮 Controls & Interactions
+
+### 🖱️ Mouse Engine
+
+- **Sidebar Navigation**: Click to jump directly to any tab; hover and scroll mouse wheel to cycle through all 10 tabs.
+- **Header Status Pills**: Click or scroll mouse wheel to cycle routing modes (`Rule` / `Global` / `Direct`).
+- **Proxies Pane**:
+  - **Click**: Select node or group.
+  - **Double Click / Re-click**: Immediately activate/switch proxy node.
+  - **Right Click**: Run single node latency test.
+- **Profiles Pane**: Click top buttons (Add/Update/Delete); double click to activate profile; right click to update subscription.
+- **Connections Pane**: Click table header to toggle traffic sorting; click row to inspect; double click or right click to close connection.
+- **Logs Pane**: Click level filter tags to filter; click/right click to clear logs; click auto-scroll pill to toggle lock.
+- **Settings Pane**: Click any setting row to toggle/cycle values instantly; click bottom bar to save config.
+- **Modals**: Click input field to focus, click outside translucent backdrop to dismiss.
+
+---
+
+### ⌨️ Keybindings Cheat Sheet
+
+```text
+╭── Navigation & Basics ───────────────╮╭── Core & Proxy Controls ────────────╮
+│ 1 ~ 0       Direct jump to tabs      ││ m / M       Cycle routing mode (Rule/Global/Direct)
+│ Tab / ]     Clockwise cycle / focus  ││ p / P       Toggle system proxy (SysProxy)│
+│ [           Counter-clockwise cycle  ││ x / X       Toggle TUN transparent proxy │
+│ j / k / ↓ ↑ Move list/table cursor   ││ r / R       Restart Mihomo Core service  │
+│ h / l / ← → Switch Sidebar ↔ Pane    ││ t / T       (Proxies) Group test / (Dash) Site test
+│ g / G       Jump to Top / Bottom     ││ o / O       (Proxies) Cycle node sort mode
+│ Enter       Confirm / Select / Save  ││ d / D       (Proxies) Test node / (Conn) Close socket
+│ / or s      Open live search bar     ││ Shift + D   (Connections) Kill all active sockets
+│ a / u       (Profiles) Add / Update  ││ a           (Logs) Toggle auto-scroll lock
+│ Esc         Exit search / Dismiss    ││ c           (Logs) Clear log stream      │
+│ ?           Toggle keymap help modal ││ q / Ctrl+C  Safe quit application        │
+╰──────────────────────────────────────╯╰─────────────────────────────────────╯
 ```
 
 ---
 
-## ⌨️ Keybindings Cheat Sheet
+## 🛠️ Headless CLI Interface
 
-| Key | Action |
-| :--- | :--- |
-| **`1` ~ `0`** | Direct jump to any of the 10 Workspace Tabs |
-| **`Tab`** | Cycle tabs / Switch input focus in settings and dialogs |
-| **`j` / `k`** or **`↓` / `↑`** | Scroll items / table rows down and up |
-| **`h` / `l`** or **`←` / `→`** | Switch focus between Sidebar ↔ Workspace / Groups ↔ Nodes |
-| **`g` / `G`** | Jump to list Top (`g`) / Bottom (`G`) |
-| **`Enter`** | Select proxy node / Activate subscription profile / Save settings |
-| **`Esc`** | Exit search, close modals, or return focus to sidebar |
-| **`m`** | Cycle routing mode (`Rule` -> `Global` -> `Direct`) |
-| **`p`** | Toggle desktop system proxy (SysProxy) |
-| **`x`** | Toggle **TUN Virtual Adapter Mode** (Global Transparent Proxy) |
-| **`r`** | Restart Mihomo Core service |
-| **`t`** | (Dashboard) Refresh website latency / (Proxies) Concurrent latency test for group |
-| **`d`** | (Proxies) Test single node / (Profiles) Delete profile / (Connections) Close socket |
-| **`o`** | (Proxies) Toggle sort nodes by latency ascending (ON/OFF) |
-| **`s`** | (Connections) Toggle sort connections by traffic descending (ON/OFF) |
-| **`/`** | Open instant fuzzy search input filter |
-| **`a` / `u`** | (Profiles) **`a`** Add new profile / **`u`** Update selected profile |
-| **`c`** | (Logs) Clear log buffer |
-| **`Shift + D`** | (Connections) Force close all active network connections |
-| **`?`** | Toggle keybindings help dialog |
-| **`q` / `Ctrl+C`** | Quit Mimo |
-
----
-
-## 🛠️ CLI Command Line Interface
-
-Mimo can also be operated non-interactively in headless or script environments:
+Mimo can be scripted and operated in headless environments without TUI:
 
 ```bash
 # Check status
@@ -118,12 +165,13 @@ mimo tun grant                          # Grant cap_net_admin capability
 mimo tun revoke                         # Revoke capability (setcap -r)
 mimo tun system|gvisor|lwip            # Switch TUN network protocol stack
 
-# Manage desktop system proxy (GSettings)
+# Manage desktop system proxy (GNOME / KDE)
 mimo sysproxy on
 mimo sysproxy off
 
 # Manage subscription profiles
 mimo profile list
+mimo profile add "MySub" "https://example.com/sub"
 mimo profile del --name "MySub"
 
 # Manage core process
@@ -134,6 +182,24 @@ mimo core restart
 
 ---
 
+## 📂 Project Architecture
+
+```text
+src/
+├── main.rs                 # Entry point · CLI parsing and TUI runtime bootstrap
+├── api/                    # Mihomo RESTful API client & WebSocket real-time engine
+├── app/
+│   ├── mod.rs              # Main event loop · keybinding dispatcher & async actions
+│   ├── mouse.rs            # Dynamic layout hit-testing engine · mouse & wheel handlers
+│   └── state.rs            # Application global state & persistent view offsets
+├── config/                 # Configuration (~/.config/mimo/config.toml) & theme palettes
+├── core/                   # Core daemon lifecycle · multi-desktop proxy · TUN & mirrors
+├── profile/                # Subscription manager · Base64 & YAML multi-protocol parser
+└── ui/                     # Ratatui rendering engine · modular components · i18n
+```
+
+---
+
 ## 📄 License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the [MIT License](LICENSE). Contributions, issues, and PRs are welcome!
