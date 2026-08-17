@@ -74,18 +74,12 @@ pub fn render(f: &mut Frame, state: &mut AppState, area: Rect) {
 
     // 2. Render Right Pane: Node List with Protocol & Latency Pills
     let group_name = state.selected_group_name().unwrap_or("None");
-    let current_nodes = state.current_group_nodes();
+    let display_nodes = state.display_group_nodes();
     let current_selected_now = state
         .proxies_resp
         .as_ref()
         .and_then(|r| r.proxies.get(group_name))
         .and_then(|g| g.now.as_deref());
-
-    // Filter nodes by search query if non-empty
-    let filtered_nodes: Vec<&String> = current_nodes
-        .iter()
-        .filter(|n| state.search_query.is_empty() || n.to_lowercase().contains(&state.search_query.to_lowercase()))
-        .collect();
 
     let right_chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -98,8 +92,8 @@ pub fn render(f: &mut Frame, state: &mut AppState, area: Rect) {
     // Render Search Bar if active
     if state.is_searching {
         let search_title = match lang {
-            Language::Zh => " 搜索节点 ",
-            Language::En => " Search Nodes ",
+            Language::Zh => " 搜索节点 / 协议 ",
+            Language::En => " Search Nodes / Protocols ",
         };
         let search_text = format!(" 搜索: {}█", state.search_query);
         let search_block = Paragraph::new(search_text)
@@ -118,7 +112,7 @@ pub fn render(f: &mut Frame, state: &mut AppState, area: Rect) {
         Language::En => " [Info] ",
     };
 
-    let node_items: Vec<ListItem> = filtered_nodes
+    let node_items: Vec<ListItem> = display_nodes
         .iter()
         .map(|node_name| {
             let is_now = current_selected_now == Some(node_name.as_str());
@@ -128,13 +122,13 @@ pub fn render(f: &mut Frame, state: &mut AppState, area: Rect) {
             let proxy_type = state
                 .proxies_resp
                 .as_ref()
-                .and_then(|r| r.proxies.get(*node_name))
+                .and_then(|r| r.proxies.get(node_name.as_str()))
                 .map(|p| p.proxy_type.clone())
                 .or_else(|| {
                     state
                         .parsed_active_profile
                         .as_ref()
-                        .and_then(|p| p.proxies.iter().find(|n| &n.name == *node_name))
+                        .and_then(|p| p.proxies.iter().find(|n| &n.name == node_name))
                         .map(|n| n.proxy_type.clone())
                 })
                 .unwrap_or_else(|| "Node".to_string());
@@ -145,12 +139,16 @@ pub fn render(f: &mut Frame, state: &mut AppState, area: Rect) {
             let type_badge_style = if is_info_card {
                 Style::default().fg(Theme::TEXT_DIM)
             } else {
-                match proxy_type.as_str() {
-                    "Shadowsocks" | "SS" => Style::default().fg(Theme::SECONDARY),
-                    "Vmess" | "Vless" => Style::default().fg(Theme::PRIMARY),
-                    "Trojan" => Style::default().fg(Theme::WARN_YELLOW),
-                    "Hysteria2" | "Tuic" => Style::default().fg(Theme::ACTIVE_GREEN),
-                    "anytls" => Style::default().fg(Theme::SECONDARY),
+                match proxy_type.to_lowercase().as_str() {
+                    "shadowsocks" | "ss" => Style::default().fg(Theme::SECONDARY),
+                    "vmess" => Style::default().fg(Theme::PRIMARY),
+                    "vless" => Style::default().fg(Theme::SECONDARY),
+                    "trojan" => Style::default().fg(Theme::WARN_YELLOW),
+                    "hysteria2" | "hy2" | "tuic" => Style::default().fg(Theme::ACTIVE_GREEN),
+                    "anytls" | "wireguard" | "wg" => Style::default().fg(Theme::MODE_BADGE),
+                    "socks5" | "http" => Style::default().fg(Theme::TEXT_SUB),
+                    "direct" => Style::default().fg(Theme::ACTIVE_GREEN),
+                    "reject" => Style::default().fg(Theme::DANGER_RED),
                     _ => Style::default().fg(Theme::TEXT_MUTED),
                 }
             };
@@ -158,14 +156,14 @@ pub fn render(f: &mut Frame, state: &mut AppState, area: Rect) {
             // Latency Pill lookup
             let delay_opt = state
                 .latency_map
-                .get(*node_name)
+                .get(node_name)
                 .copied()
                 .flatten()
                 .or_else(|| {
                     state
                         .proxies_resp
                         .as_ref()
-                        .and_then(|r| r.proxies.get(*node_name))
+                        .and_then(|r| r.proxies.get(node_name.as_str()))
                         .and_then(|p| p.last_delay())
                 });
 
@@ -208,19 +206,21 @@ pub fn render(f: &mut Frame, state: &mut AppState, area: Rect) {
         })
         .collect();
 
+    let sort_label = state.node_sort_mode.label(lang);
     let title_str = match lang {
         Language::Zh => format!(
-            " 节点列表 · {} ({} 节点) [Enter:切换 | t:测速 | s:搜索] ",
+            " 节点列表 · {} ({} 节点) · {} [Enter:切换 | t:测速 | o:排序 | /:搜索] ",
             group_name,
-            filtered_nodes.len()
+            display_nodes.len(),
+            sort_label
         ),
         Language::En => format!(
-            " Nodes · {} ({} nodes) [Enter:Select | t:Test | s:Search] ",
+            " Nodes · {} ({} nodes) · {} [Enter:Select | t:Test | o:Sort | /:Search] ",
             group_name,
-            filtered_nodes.len()
+            display_nodes.len(),
+            sort_label
         ),
     };
-
 
     let nodes_list = List::new(node_items)
         .block(
@@ -232,10 +232,10 @@ pub fn render(f: &mut Frame, state: &mut AppState, area: Rect) {
         )
         .highlight_style(Theme::ITEM_SELECTED);
 
-    if filtered_nodes.is_empty() {
+    if display_nodes.is_empty() {
         state.proxies_nodes_state.select(None);
     } else {
-        state.proxies_nodes_state.select(Some(state.selected_node_idx.min(filtered_nodes.len() - 1)));
+        state.proxies_nodes_state.select(Some(state.selected_node_idx.min(display_nodes.len() - 1)));
     }
     f.render_stateful_widget(nodes_list, right_chunks[1], &mut state.proxies_nodes_state);
 }

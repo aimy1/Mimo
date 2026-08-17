@@ -17,7 +17,7 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         .constraints([Constraint::Length(3), Constraint::Min(0)])
         .split(area);
 
-    // Log Filter Pills
+    // Log Filter Pills & Controls
     let levels = ["all", "info", "warn", "error", "debug"];
     let mut filter_spans = Vec::new();
 
@@ -35,10 +35,24 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         filter_spans.push(Span::raw(" "));
     }
 
+    let auto_scroll_label = match (state.logs_auto_scroll, lang) {
+        (true, Language::Zh) => " [ a: 自动滚动: 开启 ] ",
+        (true, Language::En) => " [ a: Auto-Scroll: ON ] ",
+        (false, Language::Zh) => " [ a: 自动滚动: 暂停 ] ",
+        (false, Language::En) => " [ a: Auto-Scroll: OFF ] ",
+    };
+    let auto_scroll_style = if state.logs_auto_scroll {
+        Style::default().fg(Theme::ACTIVE_GREEN).add_modifier(Modifier::BOLD)
+    } else {
+        Style::default().fg(Theme::TEXT_DIM)
+    };
+    filter_spans.push(Span::styled(auto_scroll_label, auto_scroll_style));
+    filter_spans.push(Span::raw(" "));
+
     let btn_clear_str = match lang { Language::Zh => " [ c: 清空 ] ", Language::En => " [ c: Clear ] " };
     filter_spans.push(Span::styled(btn_clear_str, Style::default().fg(Theme::DANGER_RED).add_modifier(Modifier::BOLD)));
 
-    let title_filter = match lang { Language::Zh => " 日志过滤 ", Language::En => " Filter " };
+    let title_filter = match lang { Language::Zh => " 日志过滤与控制 ", Language::En => " Log Controls " };
     let filter_block = Paragraph::new(Line::from(filter_spans)).block(
         Block::default()
             .borders(Borders::ALL)
@@ -80,7 +94,6 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
         Language::En => format!(" Core Logs ({}) [j/k: Scroll] ", state.logs.len()),
     };
 
-
     let border_style = if state.focus_zone == crate::app::state::FocusZone::Workspace {
         Style::default().fg(Theme::BORDER_FOCUS)
     } else {
@@ -100,4 +113,3 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
 
     f.render_widget(logs_widget, chunks[1]);
 }
-

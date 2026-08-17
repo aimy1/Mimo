@@ -252,6 +252,28 @@ impl App {
                     return Ok(false);
                 }
 
+                if self.state.is_rules_searching {
+                    match key.code {
+                        KeyCode::Esc => {
+                            self.state.is_rules_searching = false;
+                            self.state.rules_search_query.clear();
+                        }
+                        KeyCode::Backspace => {
+                            self.state.rules_search_query.pop();
+                        }
+                        KeyCode::Enter => {
+                            self.state.is_rules_searching = false;
+                        }
+                        KeyCode::Up => self.move_selection(-1),
+                        KeyCode::Down => self.move_selection(1),
+                        KeyCode::Char(c) => {
+                            self.state.rules_search_query.push(c);
+                        }
+                        _ => {}
+                    }
+                    return Ok(false);
+                }
+
                 if self.state.show_profile_input {
                     match key.code {
                         KeyCode::Esc => self.state.show_profile_input = false,
@@ -360,6 +382,8 @@ impl App {
                     KeyCode::Esc => {
                         self.state.is_searching = false;
                         self.state.search_query.clear();
+                        self.state.is_rules_searching = false;
+                        self.state.rules_search_query.clear();
                         self.state.focus_zone = FocusZone::Workspace;
                     }
 
@@ -573,9 +597,16 @@ impl App {
 
                                 // View Action Keybindings
                                 KeyCode::Char('/') => {
-                                    self.state.is_searching = !self.state.is_searching;
-                                    if !self.state.is_searching {
-                                        self.state.search_query.clear();
+                                    if self.state.active_tab == Tab::Rules {
+                                        self.state.is_rules_searching = !self.state.is_rules_searching;
+                                        if !self.state.is_rules_searching {
+                                            self.state.rules_search_query.clear();
+                                        }
+                                    } else {
+                                        self.state.is_searching = !self.state.is_searching;
+                                        if !self.state.is_searching {
+                                            self.state.search_query.clear();
+                                        }
                                     }
                                 }
                                 KeyCode::Char('t') | KeyCode::Char('T') => {
@@ -586,15 +617,28 @@ impl App {
                                     }
                                 }
                                 KeyCode::Char('o') | KeyCode::Char('O') if self.state.active_tab == Tab::Proxies => {
-                                    self.state.sort_nodes_by_latency = !self.state.sort_nodes_by_latency;
-                                    let status = if self.state.sort_nodes_by_latency { "已开启延迟升序排序" } else { "已恢复默认节点顺序" };
-                                    self.state.push_toast(status.to_string());
+                                    self.state.node_sort_mode = self.state.node_sort_mode.cycle();
+                                    let lang = crate::ui::i18n::Language::from_str(&self.state.settings_lang);
+                                    let msg = match (self.state.node_sort_mode, lang) {
+                                        (crate::app::state::NodeSortMode::Default, crate::ui::i18n::Language::Zh) => "已恢复默认节点顺序",
+                                        (crate::app::state::NodeSortMode::Default, crate::ui::i18n::Language::En) => "Restored default node order",
+                                        (crate::app::state::NodeSortMode::LatencyAsc, crate::ui::i18n::Language::Zh) => "已开启延迟升序排序 (低延迟优先)",
+                                        (crate::app::state::NodeSortMode::LatencyAsc, crate::ui::i18n::Language::En) => "Switched to lowest latency sort",
+                                        (crate::app::state::NodeSortMode::NameAsc, crate::ui::i18n::Language::Zh) => "已开启节点名称排序 (A-Z)",
+                                        (crate::app::state::NodeSortMode::NameAsc, crate::ui::i18n::Language::En) => "Switched to alphabetical node sort",
+                                    };
+                                    self.state.push_toast(msg.to_string());
                                 }
                                 KeyCode::Char('s') | KeyCode::Char('S') => {
                                     if self.state.active_tab == Tab::Connections {
                                         self.state.sort_connections_by_traffic = !self.state.sort_connections_by_traffic;
                                         let status = if self.state.sort_connections_by_traffic { "已开启连接流量降序排序" } else { "已恢复默认连接顺序" };
                                         self.state.push_toast(status.to_string());
+                                    } else if self.state.active_tab == Tab::Rules {
+                                        self.state.is_rules_searching = !self.state.is_rules_searching;
+                                        if !self.state.is_rules_searching {
+                                            self.state.rules_search_query.clear();
+                                        }
                                     } else {
                                         self.state.is_searching = !self.state.is_searching;
                                         if !self.state.is_searching {
@@ -605,11 +649,23 @@ impl App {
                                 KeyCode::Enter => {
                                     self.confirm_selection().await;
                                 }
-                                KeyCode::Char('a') | KeyCode::Char('A') if self.state.active_tab == Tab::Profiles => {
-                                    self.state.profile_name_input.clear();
-                                    self.state.profile_url_input.clear();
-                                    self.state.profile_input_focus = 0;
-                                    self.state.show_profile_input = true;
+                                KeyCode::Char('a') | KeyCode::Char('A') => {
+                                    if self.state.active_tab == Tab::Profiles {
+                                        self.state.profile_name_input.clear();
+                                        self.state.profile_url_input.clear();
+                                        self.state.profile_input_focus = 0;
+                                        self.state.show_profile_input = true;
+                                    } else if self.state.active_tab == Tab::Logs {
+                                        self.state.logs_auto_scroll = !self.state.logs_auto_scroll;
+                                        let lang = crate::ui::i18n::Language::from_str(&self.state.settings_lang);
+                                        let msg = match (self.state.logs_auto_scroll, lang) {
+                                            (true, crate::ui::i18n::Language::Zh) => "日志自动滚动: 已开启",
+                                            (true, crate::ui::i18n::Language::En) => "Log auto-scroll: ON",
+                                            (false, crate::ui::i18n::Language::Zh) => "日志自动滚动: 已暂停",
+                                            (false, crate::ui::i18n::Language::En) => "Log auto-scroll: PAUSED",
+                                        };
+                                        self.state.push_toast(msg.to_string());
+                                    }
                                 }
                                 KeyCode::Char('u') | KeyCode::Char('U') if self.state.active_tab == Tab::Profiles => {
                                     if let Some(p) = self.state.profiles.get(self.state.selected_profile_idx)
@@ -1111,6 +1167,9 @@ impl App {
                 if self.state.logs.len() > 500 {
                     self.state.logs.pop_front();
                 }
+                if self.state.logs_auto_scroll {
+                    self.state.log_scroll = 0;
+                }
             }
 
             Action::ConnectionsFetched(res) => match res {
@@ -1172,12 +1231,10 @@ impl App {
                 }
             }
             Tab::Rules => {
-                if let Some(resp) = &self.state.rules_resp {
-                    let len = resp.rules.len();
-                    if len > 0 {
-                        self.state.selected_rule_idx = (self.state.selected_rule_idx as i32 + delta)
-                            .clamp(0, len as i32 - 1) as usize;
-                    }
+                let len = self.state.filtered_rules().len();
+                if len > 0 {
+                    self.state.selected_rule_idx = (self.state.selected_rule_idx as i32 + delta)
+                        .clamp(0, len as i32 - 1) as usize;
                 }
             }
             Tab::Connections => {
@@ -1194,7 +1251,7 @@ impl App {
             }
             Tab::Settings => {
                 let current = self.state.settings_focus as i32;
-                self.state.settings_focus = (current + delta).clamp(0, 11) as usize;
+                self.state.settings_focus = (current + delta).clamp(0, 19) as usize;
             }
             _ => {}
         }
@@ -1232,10 +1289,8 @@ impl App {
                 if len > 0 { self.state.selected_profile_idx = len - 1; }
             }
             Tab::Rules => {
-                if let Some(resp) = &self.state.rules_resp {
-                    let len = resp.rules.len();
-                    if len > 0 { self.state.selected_rule_idx = len - 1; }
-                }
+                let len = self.state.filtered_rules().len();
+                if len > 0 { self.state.selected_rule_idx = len - 1; }
             }
             Tab::Connections => {
                 let len = self.state.filtered_sorted_connections().len();

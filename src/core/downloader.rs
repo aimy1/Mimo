@@ -47,6 +47,14 @@ impl CoreDownloader {
                 filename
             ),
             format!(
+                "https://ghproxy.net/https://github.com/MetaCubeX/mihomo/releases/download/v1.19.29/{}",
+                filename
+            ),
+            format!(
+                "https://gh-proxy.com/https://github.com/MetaCubeX/mihomo/releases/download/v1.19.29/{}",
+                filename
+            ),
+            format!(
                 "https://gh.ddlc.top/https://github.com/MetaCubeX/mihomo/releases/download/v1.19.29/{}",
                 filename
             ),

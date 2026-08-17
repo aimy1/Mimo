@@ -720,17 +720,20 @@ async fn handle_profiles_click(
 }
 
 fn handle_rules_click(app: &mut App, _col: u16, row: u16, area: Rect) {
-    let inner_y = area.y + 2; // Border + table header
-    if row >= inner_y && row < area.y + area.height.saturating_sub(1) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            if app.state.is_rules_searching { Constraint::Length(3) } else { Constraint::Length(0) },
+            Constraint::Min(0),
+        ])
+        .split(area);
+
+    let table_rect = chunks[1];
+    let inner_y = table_rect.y + 2; // Border + table header
+    if row >= inner_y && row < table_rect.y + table_rect.height.saturating_sub(1) {
         let offset = app.state.rules_state.offset();
         let clicked_idx = offset + (row - inner_y) as usize;
-        let count = app
-            .state
-            .rules_resp
-            .as_ref()
-            .map(|r| r.rules.len())
-            .or_else(|| app.state.parsed_active_profile.as_ref().map(|p| p.rules.len()))
-            .unwrap_or(0);
+        let count = app.state.filtered_rules().len();
         if clicked_idx < count {
             app.state.selected_rule_idx = clicked_idx;
         }
@@ -785,7 +788,7 @@ fn handle_logs_click(app: &mut App, col: u16, row: u16, area: Rect) {
         .constraints([Constraint::Length(3), Constraint::Min(0)])
         .split(area);
 
-    // Filter pills bar
+    // Filter pills bar & action buttons
     if rect_contains(chunks[0], col, row) {
         let rel_x = col.saturating_sub(chunks[0].x);
         if rel_x < 18 {
@@ -798,6 +801,14 @@ fn handle_logs_click(app: &mut App, col: u16, row: u16, area: Rect) {
             app.state.log_filter = "error".into();
         } else if rel_x < 50 {
             app.state.log_filter = "debug".into();
+        } else if rel_x < 75 {
+            app.state.logs_auto_scroll = !app.state.logs_auto_scroll;
+            let status = if app.state.logs_auto_scroll {
+                "已开启日志自动滚动"
+            } else {
+                "已暂停日志自动滚动"
+            };
+            app.state.push_toast(status.to_string());
         } else {
             app.state.logs.clear();
             app.state.push_toast("Logs cleared".to_string());

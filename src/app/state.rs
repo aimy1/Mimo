@@ -62,6 +62,35 @@ pub enum ProxySubFocus {
     Nodes,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum NodeSortMode {
+    #[default]
+    Default,
+    LatencyAsc,
+    NameAsc,
+}
+
+impl NodeSortMode {
+    pub fn cycle(self) -> Self {
+        match self {
+            Self::Default => Self::LatencyAsc,
+            Self::LatencyAsc => Self::NameAsc,
+            Self::NameAsc => Self::Default,
+        }
+    }
+
+    pub fn label(self, lang: crate::ui::i18n::Language) -> &'static str {
+        match (self, lang) {
+            (Self::Default, crate::ui::i18n::Language::Zh) => "默认顺序",
+            (Self::Default, crate::ui::i18n::Language::En) => "Default",
+            (Self::LatencyAsc, crate::ui::i18n::Language::Zh) => "延迟升序",
+            (Self::LatencyAsc, crate::ui::i18n::Language::En) => "Lowest Latency",
+            (Self::NameAsc, crate::ui::i18n::Language::Zh) => "名称排序",
+            (Self::NameAsc, crate::ui::i18n::Language::En) => "Name A-Z",
+        }
+    }
+}
+
 pub struct AppState {
     pub active_tab: Tab,
     pub focus_zone: FocusZone,
@@ -73,9 +102,13 @@ pub struct AppState {
     pub memory_used_bytes: u64,
     pub memory_total_bytes: u64,
 
-    // Realtime Search State
+    // Realtime Search State (Proxies & Connections)
     pub is_searching: bool,
     pub search_query: String,
+
+    // Rules Search State
+    pub is_rules_searching: bool,
+    pub rules_search_query: String,
 
     // Rules Data
     pub rules_resp: Option<crate::models::RulesResponse>,
@@ -128,12 +161,13 @@ pub struct AppState {
     pub profile_url_input: String,
     pub profile_input_focus: usize, // 0 for name, 1 for url
 
-    // Proxies Selection Indices
+    // Proxies Selection Indices & Sorting
     pub proxy_groups: Vec<String>,
     pub selected_group_idx: usize,
     pub selected_node_idx: usize,
     pub latency_map: HashMap<String, Option<u16>>,
     pub sort_nodes_by_latency: bool,
+    pub node_sort_mode: NodeSortMode,
 
     // Connections Selection Index
     pub selected_conn_idx: usize,
@@ -152,6 +186,7 @@ pub struct AppState {
     pub logs: VecDeque<LogMessage>,
     pub log_scroll: usize,
     pub log_filter: String,
+    pub logs_auto_scroll: bool,
 
     // System Info Metadata
     pub sys_hostname: String,
@@ -212,6 +247,8 @@ impl Default for AppState {
             site_latencies,
             is_searching: false,
             search_query: String::new(),
+            is_rules_searching: false,
+            rules_search_query: String::new(),
             rules_resp: None,
             selected_rule_idx: 0,
             settings_lang: config.language.clone(),
@@ -259,6 +296,7 @@ impl Default for AppState {
             selected_node_idx: 0,
             latency_map: HashMap::new(),
             sort_nodes_by_latency: false,
+            node_sort_mode: NodeSortMode::Default,
             connections_resp: None,
             selected_conn_idx: 0,
             sort_connections_by_traffic: false,
@@ -268,6 +306,7 @@ impl Default for AppState {
             logs: VecDeque::with_capacity(500),
             log_scroll: 0,
             log_filter: "all".to_string(),
+            logs_auto_scroll: true,
             toast: None,
             proxies_groups_state: ListState::default(),
             proxies_nodes_state: ListState::default(),
@@ -329,32 +368,87 @@ impl AppState {
             nodes
         } else {
             let q = self.search_query.trim().to_lowercase();
-            nodes.into_iter().filter(|n| n.to_lowercase().contains(&q)).collect()
+            nodes
+                .into_iter()
+                .filter(|n| {
+                    let name_lower = n.to_lowercase();
+                    if name_lower.contains(&q) {
+                        return true;
+                    }
+                    // Protocol type keyword matching
+                    let proxy_type = self
+                        .proxies_resp
+                        .as_ref()
+                        .and_then(|r| r.proxies.get(n))
+                        .map(|p| p.proxy_type.to_lowercase())
+                        .or_else(|| {
+                            self.parsed_active_profile
+                                .as_ref()
+                                .and_then(|p| p.proxies.iter().find(|pn| &pn.name == n))
+                                .map(|pn| pn.proxy_type.to_lowercase())
+                        })
+                        .unwrap_or_default();
+
+                    proxy_type.contains(&q)
+                })
+                .collect()
         }
     }
 
     pub fn display_group_nodes(&self) -> Vec<String> {
         let mut nodes = self.filtered_group_nodes();
-        if self.sort_nodes_by_latency {
-            nodes.sort_by_key(|n| {
-                
-                self
-                    .latency_map
-                    .get(n)
-                    .copied()
-                    .flatten()
-                    .or_else(|| {
-                        self.proxies_resp
-                            .as_ref()
-                            .and_then(|r| r.proxies.get(n))
-                            .and_then(|p| p.history.as_ref())
-                            .and_then(|h| h.last())
-                            .and_then(|h| if h.delay > 0 { Some(h.delay) } else { None })
-                    })
-                    .unwrap_or(u16::MAX)
-            });
+        match self.node_sort_mode {
+            NodeSortMode::Default => {}
+            NodeSortMode::LatencyAsc => {
+                nodes.sort_by_key(|n| {
+                    self.latency_map
+                        .get(n)
+                        .copied()
+                        .flatten()
+                        .or_else(|| {
+                            self.proxies_resp
+                                .as_ref()
+                                .and_then(|r| r.proxies.get(n))
+                                .and_then(|p| p.history.as_ref())
+                                .and_then(|h| h.last())
+                                .and_then(|h| if h.delay > 0 { Some(h.delay) } else { None })
+                        })
+                        .unwrap_or(u16::MAX)
+                });
+            }
+            NodeSortMode::NameAsc => {
+                nodes.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
+            }
         }
         nodes
+    }
+
+    pub fn filtered_rules(&self) -> Vec<(usize, String, String, String)> {
+        let mut list = Vec::new();
+        let q = self.rules_search_query.trim().to_lowercase();
+
+        if let Some(resp) = &self.rules_resp {
+            for (idx, rule) in resp.rules.iter().enumerate() {
+                if q.is_empty()
+                    || rule.rule_type.to_lowercase().contains(&q)
+                    || rule.payload.to_lowercase().contains(&q)
+                    || rule.proxy.to_lowercase().contains(&q)
+                {
+                    list.push((idx, rule.rule_type.clone(), rule.payload.clone(), rule.proxy.clone()));
+                }
+            }
+        } else if let Some(parsed) = &self.parsed_active_profile {
+            for (idx, rule) in parsed.rules.iter().enumerate() {
+                if q.is_empty()
+                    || rule.rule_type.to_lowercase().contains(&q)
+                    || rule.payload.to_lowercase().contains(&q)
+                    || rule.proxy.to_lowercase().contains(&q)
+                {
+                    list.push((idx, rule.rule_type.clone(), rule.payload.clone(), rule.proxy.clone()));
+                }
+            }
+        }
+        list
     }
 
     pub fn filtered_sorted_connections(&self) -> Vec<&crate::models::ConnectionItem> {
@@ -384,5 +478,68 @@ impl AppState {
             }
         }
         list
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_node_sort_mode_cycle() {
+        let mode = NodeSortMode::Default;
+        assert_eq!(mode.cycle(), NodeSortMode::LatencyAsc);
+        assert_eq!(mode.cycle().cycle(), NodeSortMode::NameAsc);
+        assert_eq!(mode.cycle().cycle().cycle(), NodeSortMode::Default);
+    }
+
+    #[test]
+    fn test_node_sort_mode_labels() {
+        assert_eq!(NodeSortMode::Default.label(crate::ui::i18n::Language::Zh), "默认顺序");
+        assert_eq!(NodeSortMode::LatencyAsc.label(crate::ui::i18n::Language::Zh), "延迟升序");
+        assert_eq!(NodeSortMode::NameAsc.label(crate::ui::i18n::Language::Zh), "名称排序");
+
+        assert_eq!(NodeSortMode::Default.label(crate::ui::i18n::Language::En), "Default");
+        assert_eq!(NodeSortMode::LatencyAsc.label(crate::ui::i18n::Language::En), "Lowest Latency");
+        assert_eq!(NodeSortMode::NameAsc.label(crate::ui::i18n::Language::En), "Name A-Z");
+    }
+
+    #[test]
+    fn test_filtered_rules_empty_query() {
+        let mut state = AppState::default();
+        state.parsed_active_profile = Some(crate::profile::ParsedProfile {
+            proxies: Vec::new(),
+            proxy_groups: Vec::new(),
+            rules: vec![
+                crate::models::Rule {
+                    rule_type: "DOMAIN-SUFFIX".into(),
+                    payload: "google.com".into(),
+                    proxy: "PROXY".into(),
+                },
+                crate::models::Rule {
+                    rule_type: "GEOIP".into(),
+                    payload: "CN".into(),
+                    proxy: "DIRECT".into(),
+                },
+            ],
+            raw_yaml: String::new(),
+            has_dns: false,
+            has_tun: false,
+            external_controller: None,
+            secret: None,
+        });
+
+        let rules = state.filtered_rules();
+        assert_eq!(rules.len(), 2);
+
+        state.rules_search_query = "google".into();
+        let matched = state.filtered_rules();
+        assert_eq!(matched.len(), 1);
+        assert_eq!(matched[0].2, "google.com");
+
+        state.rules_search_query = "DIRECT".into();
+        let matched_direct = state.filtered_rules();
+        assert_eq!(matched_direct.len(), 1);
+        assert_eq!(matched_direct[0].3, "DIRECT");
     }
 }
