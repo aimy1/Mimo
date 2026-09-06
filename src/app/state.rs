@@ -134,6 +134,7 @@ pub struct AppState {
     pub settings_sub_update_hours: u32,
     pub settings_ui_theme: String,
     pub settings_focus: usize, // index
+    pub is_downloading_core: bool,
 
     // API Data
     pub version: Option<VersionInfo>,
@@ -270,6 +271,7 @@ impl Default for AppState {
             settings_sub_update_hours: config.sub_update_hours,
             settings_ui_theme: config.ui_theme.clone(),
             settings_focus: 0,
+            is_downloading_core: false,
             version: None,
             config: None,
             proxies_resp: None,
