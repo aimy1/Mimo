@@ -209,7 +209,17 @@ pub fn render(f: &mut Frame, state: &AppState, area: Rect) {
     let log_val = format!("{} [Space]", state.settings_log_level);
     let lan_val = if state.settings_allow_lan { "● 开启 ON [Space]" } else { "○ 关闭 OFF [Space]" };
     let ipv6_val = if state.settings_ipv6 { "● 开启 ON [Space]" } else { "○ 关闭 OFF [Space]" };
-    let dl_core_val = "[ 自动更新核心 (Enter) ]";
+    let dl_core_val = if state.is_downloading_core {
+        match lang {
+            Language::Zh => "[ ⏳ 核心更新中... ]",
+            Language::En => "[ ⏳ Updating Core... ]",
+        }
+    } else {
+        match lang {
+            Language::Zh => "[ 自动更新核心 (Enter) ]",
+            Language::En => "[ Update Core (Enter) ]",
+        }
+    };
 
     let card3_lines = vec![
         make_row(11, "TUN Network Stack", &stack_val, false, false),
