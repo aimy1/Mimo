@@ -6,7 +6,7 @@
 
 set -e
 
-VERSION="1.4.3"
+VERSION="1.4.4"
 ARCH="$(uname -m)"
 
 OUTPUT_DIR="dist-release"
