@@ -52,6 +52,7 @@ pub enum Action {
     StopCore,
     RestartCore,
     DownloadCore,
+    DownloadProgress(String),
     DownloadCoreResult(Result<String, String>),
     SaveSettings,
     // Navigation / Focus
