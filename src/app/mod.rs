@@ -1064,27 +1064,45 @@ impl App {
             }
 
             Action::DownloadCore => {
-                self.state.push_toast("正在自动为您下载与安装 Mihomo 核心...".to_string());
+                if self.state.is_downloading_core {
+                    self.state.push_toast("⏳ 正在更新核心中，请稍候...".to_string());
+                    return Ok(false);
+                }
+                self.state.is_downloading_core = true;
+                self.state.push_toast("正在检查并获取最新 Mihomo 核心...".to_string());
                 let tx = self.action_tx.clone();
                 tokio::spawn(async move {
-                    let res = crate::core::CoreDownloader::download_and_install(|_msg| {}).await
-                        .map(|p| p.to_string_lossy().to_string())
-                        .map_err(|e| e.to_string());
+                    let tx_prog = tx.clone();
+                    let res = crate::core::CoreDownloader::download_and_install(move |msg| {
+                        let _ = tx_prog.try_send(Action::DownloadProgress(msg.to_string()));
+                    })
+                    .await
+                    .map(|p| p.to_string_lossy().to_string())
+                    .map_err(|e| e.to_string());
                     let _ = tx.send(Action::DownloadCoreResult(res)).await;
                 });
             }
 
-            Action::DownloadCoreResult(res) => match res {
-                Ok(path) => {
-                    self.state.push_toast(format!("🎉 Mihomo 核心自动安装成功: {}", path));
-                    self.state.status_error = None;
-                    self.fetch_profiles();
-                    self.fetch_version();
+            Action::DownloadProgress(msg) => {
+                self.state.push_toast(msg);
+            }
+
+            Action::DownloadCoreResult(res) => {
+                self.state.is_downloading_core = false;
+                match res {
+                    Ok(path) => {
+                        self.state.push_toast(format!("🎉 Mihomo 核心更新成功: {}", path));
+                        self.state.status_error = None;
+                        self.state.push_toast("正在重启 Mihomo 内核服务生效...".to_string());
+                        let _ = crate::core::CoreProcess::restart();
+                        self.fetch_profiles();
+                        self.fetch_version();
+                    }
+                    Err(e) => {
+                        self.state.push_toast(format!("❌ Mihomo 自动下载失败: {}", e));
+                    }
                 }
-                Err(e) => {
-                    self.state.push_toast(format!("❌ Mihomo 自动下载失败: {}", e));
-                }
-            },
+            }
 
             Action::SaveSettings => {
                 let mut cfg = crate::config::Config::load().unwrap_or_default();
