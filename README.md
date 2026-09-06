@@ -1,14 +1,14 @@
 <div align="center">
 
 ```text
- ╭────────────────────────────────────────────────────────╮
- │   ███╗   ███╗██╗███╗   ███╗ ██████╗       ⚡ MIMO TUI  │
- │   ████╗ ████║██║████╗ ████║██╔═══██╗      v1.4.4       │
- │   ██╔████╔██║██║██╔████╔██║██║   ██║      Rust/Ratatui │
- │   ██║╚██╔╝██║██║██║╚██╔╝██║██║   ██║      <10ms · ~5MB │
- │   ██║ ╚═╝ ██║██║██║ ╚═╝ ██║╚██████╔╝                   │
- │   ╚═╝     ╚═╝╚═╝╚═╝     ╚═╝ ╚═════╝       Linux Proxy  │
- ╰────────────────────────────────────────────────────────╯
+ ╭────────────────────────────────────────────────────────────────────────╮
+ │   ███╗   ███╗██╗███╗   ███╗ ██████╗       ⚡ MIMO TUI                  │
+ │   ████╗ ████║██║████╗ ████║██╔═══██╗      Minimalist Mihomo Manager    │
+ │   ██╔████╔██║██║██╔████╔██║██║   ██║      Rust 2024 · Ratatui v0.29    │
+ │   ██║╚██╔╝██║██║██║╚██╔╝██║██║   ██║      Cold Start <10ms · ~5MB RAM │
+ │   ██║ ╚═╝ ██║██║██║ ╚═╝ ██║╚██████╔╝                                   │
+ │   ╚═╝     ╚═╝╚═╝╚═╝     ╚═╝ ╚═════╝       v1.4.4 · Modern Linux Proxy  │
+ ╰────────────────────────────────────────────────────────────────────────╯
 ```
 
 # ⚡ Mimo · 极简现代 Linux 终端代理控制中心
@@ -16,12 +16,12 @@
 [![Release](https://img.shields.io/github/v/release/aimy1/Mimo?style=flat-square&color=cba6f7&label=Release)](https://github.com/aimy1/Mimo/releases)
 [![Rust](https://img.shields.io/badge/Language-Rust%202024-fab387?style=flat-square&logo=rust)](https://www.rust-lang.org/)
 [![Ratatui](https://img.shields.io/badge/TUI-Ratatui%20v0.29-89b4fa?style=flat-square)](https://ratatui.rs/)
-[![Core](https://img.shields.io/badge/Core-Mihomo-a6e3a1?style=flat-square)](https://github.com/MetaCubeX/mihomo)
+[![Core](https://img.shields.io/badge/Core-Mihomo%20%2F%20Clash.Meta-a6e3a1?style=flat-square)](https://github.com/MetaCubeX/mihomo)
 [![License](https://img.shields.io/badge/License-MIT-94e2d5?style=flat-square)](LICENSE)
 
 <p align="center">
   <b>极轻量、极速响应的 Linux 终端 TUI & CLI 代理控制中心</b><br>
-  Catppuccin Mocha 现代暗色调 · 键盘 Vim / 鼠标双驱动 · Linux 全局 TUN 透明代理 · 智能内核热更新
+  <b>Catppuccin Mocha 现代暗色调设计 · 键盘 Vim / 鼠标全维度双模驱动 · 全局 TUN 透明接管 · 智能内核热更新</b>
 </p>
 
 [ 🇨🇳 简体中文 (Current) ](README.md) &nbsp;|&nbsp; [ 🇺🇸 English Documentation ](README_EN.md)
@@ -30,7 +30,7 @@
 
 ---
 
-## 🖥️ 界面预览
+## 🖥️ TUI 界面美学预览
 
 ```text
 ╭─ ⚡ MIMO 1.4.4 ─╮╭─ [模式: RULE] ── [系统代理: OFF] ── [TUN: ON (gvisor)] ── [↑ 12.4 KB/s  ↓ 1.2 MB/s] ──╮
@@ -50,159 +50,184 @@
 
 ---
 
-## ⚡ 核心特性亮点
+## 🌟 核心设计理念
 
-- 🚀 **极致轻量 & 原生性能**：基于 Rust 2024 + Ratatui + Tokio 原生打造，告别臃肿的 Electron 消耗，冷启动 **<10ms**，常驻内存仅 **~5MB**。
-- 🎨 **Catppuccin Mocha 美学设计**：优雅暗色系调色板，高对比度状态徽章，告别层叠边框视觉干扰。
-- 🕹️ **Vim 键盘流 + 全维度鼠标交互**：完美支持 `j/k/h/l`、`g/G`、`/` 搜索以及原生鼠标操作（滚轮智能滚动、单击选中、双击激活代理、右键一键测速或断连）。
-- 🌐 **全系统 TUN 虚拟网卡透明代理**：内置 `system` / `gvisor` / `lwip` 网络栈，支持 Polkit GUI 提权与免 root `CAP_NET_ADMIN` 授权，无缝接管终端与全局应用流量。
-- 🖥️ **主流 Linux 桌面环境代理联动**：自动原生适配 **KDE Plasma 5/6** (`kwriteconfig` / D-Bus) 与 **GNOME / Cinnamon** (`gsettings`)，同时支持全局终端环境变量联动。
-- 🔄 **智能内核管理与自动热更新**：动态探测 GitHub 最新 Release，多镜像源（GitHub、ghproxy.net、gh-proxy.com、gh.ddlc.top）智能竞速与免代理直连回退；临时文件原子替换避免 Linux `ETXTBSY` 文件占用冲突，更新后自动重载服务。
-- 📑 **全功能订阅与节点管理**：支持 Clash/Mihomo 标准 YAML、Base64 订阅及 SS/Vmess/Vless/Trojan 协议解析；支持默认 / 延迟升序 / 字典序三模排序与实时关键词过滤。
-- 🎛️ **双模运行 (TUI + 强大 CLI)**：既能享受沉浸式终端界面，也可在命令行脚本中直接单次调用，兼顾桌面日常与服务器运维。
-
----
-
-## 🗺️ 10 大功能面板一览
-
-| 序号 | 页面名称 | 快捷键 | 功能说明 |
-| :---: | :--- | :---: | :--- |
-| **1** | **仪表盘** (Dashboard) | `1` | 核心运行状态、出口公网 IP、实时吞吐速率、主流站点连通延迟测试 |
-| **2** | **节点选择** (Proxies) | `2` | 代理分组切换、节点列表浏览、三模排序轮转 (`o`)、全量/单节点测速 (`t`/`d`)、实时过滤 (`/`) |
-| **3** | **订阅配置** (Profiles) | `3` | 订阅链接解析导入 (`a`)、在线一键更新、活动配置切换 (`Enter`)、配置删除 (`d`) |
-| **4** | **规则路由** (Rules) | `4` | 实时查看 Mihomo 路由规则集、生效行为标注、全文模糊搜索过滤 (`/`) |
-| **5** | **连接管理** (Connections) | `5` | 查看当前所有网络连接、来源进程与目标地址、上行下行速率、选中连接一键断开 (`d`) |
-| **6** | **流量监控** (Traffic) | `6` | 动态终端流量历史图表、累计吞吐计量与瞬时传输统计 |
-| **7** | **运行日志** (Logs) | `7` | Mihomo 核心实时运行日志捕获、级别过滤、自动滚动锁定/暂停 (`a`) |
-| **8** | **系统设置** (Settings) | `8` | 核心 API 地址/Secret、代理端口、DNS 模式、嗅探开关、**内核自动升级 (Enter)**、主题预设与多语言切换 |
-| **9** | **权限管理** (Privileges) | `9` | TUN 虚拟网卡权限诊断、一键配置 Polkit / `CAP_NET_ADMIN` 免密运行能力 |
-| **0** | **关于信息** (About) | `0` | 项目版本、系统软硬件环境诊断、快捷键概览与项目许可 |
+| 维度 | 特性亮点 |
+| :--- | :--- |
+| ⚡ **极致轻量与瞬时冷启动** | 纯 Rust + Tokio + Ratatui 原生打造，告别 Electron 笨重负担，**冷启动 <10ms，常驻内存仅 ~5MB** |
+| 🎨 **Catppuccin 现代暗色调** | 预置 **Catppuccin Mocha**、Nord、TokyoNight、Gruvbox 4 大暗色主题，告别嵌套边框，高对比度状态徽章 |
+| 🕹️ **Vim 键盘流 + 鼠标双驱** | **Vim 流** (`j/k/h/l`, `g/G`, `/`) 与**全维度鼠标**（滚轮顺滑平移、单击切换焦点、双击改切代理、右键快速测速） |
+| 🛡️ **全局 TUN 虚拟网卡代理** | 原生透明接管系统全部 TCP/UDP/DNS 流量，支持 `system` / `gvisor` / `lwip` 协议栈及 Polkit 免密提权 |
+| 🐧 **Linux 主流桌面深度联动** | 自动无缝适配 **KDE Plasma 5/6** (`kioslaverc` + KIO D-Bus) 与 **GNOME / Cinnamon** (`gsettings`) |
+| 🔄 **智能内核管理与自动热更** | 动态探测 GitHub 官方最新 Release，多镜像调度与免代理直连回退；临时文件原子替换杜绝 `ETXTBSY` 占用，平滑重启生效 |
+| 📑 **全格式订阅与智能解析** | 原生解析 Clash/Mihomo YAML、Base64 与 SS/Vmess/Vless/Trojan 直连协议；提供三模排序与模糊搜索 |
+| 🎛️ **双模形态 (TUI + 强大 CLI)** | 既能享受终端全屏沉浸式 TUI，也可在 Shell 脚本中直接一行命令控制代理，桌面运维两相宜 |
 
 ---
 
-## 🚀 安装指南
+## 📊 10 大功能工作区全景
 
-### 方式 1: 官方一键安装 (推荐)
+```text
+┌── [1] 仪表盘 (Dashboard) ─── 核心运行健康度 · 出口公网 IP 探测 · 常用站点 (Google/GitHub 等) 延迟 · 瞬时吞吐
+├── [2] 节点选择 (Proxies) ── 协议色彩标签 · 单点/整组真连接测速 · 三模式排序 (默认/延迟升序/名称 A-Z) · 实时搜索过滤
+├── [3] 订阅配置 (Profiles) ── 订阅链接导入 (`a`) · 在线一键更新 (`u`) · 活跃配置切换 (`Enter`) · 自动持久化存储
+├── [4] 路由规则 (Rules) ──── 规则集全量明细 (`DOMAIN-SUFFIX`, `IP-CIDR`, `GEOIP` 等) · 全文关键词实时搜索
+├── [5] 连接管理 (Connections) 活跃 TCP/UDP 套接字监控 · 来源进程与目标域名 · 瞬时与累计流量 · 单连接切断 (`d`)
+├── [6] 流量监控 (Traffic) ──── 高精实时上下行速率仪表盘 · 平滑历史趋势图表 · 累计带宽流量统计
+├── [7] 运行日志 (Logs) ────── WebSocket 核心实时日志流 · 严重级别过滤 (`INFO`/`WARN`/`ERR` 等) · 自动跟随滚动 (`a`)
+├── [8] 系统设置 (Settings) ── API 地址与密钥 · 代理端口 · DNS 模式 (`fake-ip`/`redir-host`) · 自动升级内核 (`Enter`) · 主题切换
+├── [9] 权限管理 (Privileges) ─ Linux `CAP_NET_ADMIN` 能力诊断 · Polkit GUI 提权与权限撤销 · 系统安全审计
+└── [0] 关于信息 (About) ────── 软件版本与构建元数据 · 操作系统与 CPU 硬件诊断 · 快捷键导航手册 · 开源协议
+```
 
-一键自动检测 Linux 发行版与 CPU 架构（x86_64 / aarch64 / armv7），自动下载最新版本并配置可执行权限：
+---
+
+## 🚀 快速开始
+
+### 方式 1: 官方一键极速安装 (推荐)
+
+一键自动检测 Linux 发行版与 CPU 架构（`x86_64` / `aarch64` / `armv7`），自动下载最新版本并配置可执行权限：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/aimy1/Mimo/main/scripts/install.sh | bash
 ```
 
-### 方式 2: Arch Linux (AUR)
+### 方式 2: 各 Linux 发行版安装包
 
-Arch Linux / Manjaro / EndeavourOS 用户可通过 AUR 助手直接安装：
-
-```bash
-yay -S mimo-bin
-# 或
-paru -S mimo-bin
-```
+| 发行版体系 | 安装方式 | 架构支持 | 产物格式 |
+| :--- | :--- | :--- | :--- |
+| **Arch Linux / Manjaro** | `yay -S mimo-bin` 或 `paru -S mimo-bin` | `x86_64`, `aarch64` | `AUR (PKGBUILD)` |
+| **Debian / Ubuntu / Mint** | `sudo dpkg -i mimo_1.4.4_amd64.deb` | `amd64`, `arm64`, `armhf` | `DEB` |
+| **Fedora / RHEL / Rocky** | `sudo dnf install mimo-1.4.4-1.x86_64.rpm` | `x86_64`, `aarch64`, `armhfp` | `RPM` |
+| **通用 Linux 二进制** | 解压 `mimo-1.4.4-x86_64.tar.gz` 复制到 `~/.local/bin/` | `x86_64`, `aarch64`, `armv7` | `Tarball` |
 
 ### 方式 3: Cargo 源码编译
 
 ```bash
-# 确保已安装 Rust 工具链 (edition 2024)
+# 需已配置 Rust 2024 工具链
 git clone https://github.com/aimy1/Mimo.git && cd Mimo
 cargo build --release
 sudo install -m 755 target/release/mimo /usr/local/bin/mimo
 ```
 
----
+### 启动运行
 
-## ⌨️ 常用操控速查
-
-### 全局导航与核心开关
-
-| 按键 / 操作 | 功能说明 |
-| :--- | :--- |
-| **`1` ~ `0`** | 数字键直达 10 大主功能页面 |
-| **`Tab` / `]`** | 顺时针快速切页 / 切换表单输入焦点 |
-| **`h` / `l`** 或 **`←` / `→`** | 侧边栏 ↔ 工作区焦点切换 / 代理分组 ↔ 节点列表窗格切换 |
-| **`j` / `k`** 或 **`↓` / `↑`** | 光标上下移动或列表滚动 |
-| **`m`** | 循环切换核心代理模式 (`Rule` 规则 ➔ `Global` 全局 ➔ `Direct` 直连) |
-| **`p`** | 一键切换 Linux 桌面系统代理 (SysProxy) |
-| **`x`** | 一键切换 **TUN 虚拟网卡** 透明代理模式 |
-| **`r`** | 重启 Mihomo 核心服务 |
-| **`?`** | 弹出 / 关闭键盘快捷键帮助窗口 |
-| **`q` / `Esc`** | 退出当前弹窗或退出 Mimo 程序 |
-
-### 页面专属快捷键
-
-* **节点选择页**：
-  * **`Enter`**：选中并激活代理节点
-  * **`t`**：测速当前选中分组的所有节点
-  * **`d`**：对当前光标下的单节点进行延迟测试
-  * **`o`**：循环切换节点排序模式（`默认顺序` ➔ `延迟升序` ➔ `名称 A-Z`）
-  * **`/` 或 `s`**：开启节点名称实时搜索过滤框
-* **订阅管理页**：
-  * **`a`**：弹出添加订阅配置窗口 (输入名称与 URL)
-  * **`Enter`**：激活选中配置文件并重载核心
-  * **`u`**：重新从远端下载更新选中订阅
-  * **`d`**：删除选中的订阅配置
-* **运行日志页**：
-  * **`a`**：开启 / 暂停日志末尾自动跟踪滚动
-  * **`c`**：清空当前已捕获的日志缓冲区
-* **系统设置页**：
-  * **`Space` (空格)**：快速轮转枚举项（DNS 模式、嗅探开关、日志级别、语言、主题等）
-  * **`Enter`**：在第 15 项触发**内核自动检查更新并热重启**；在底栏保存全部设置
-
-### 🖱️ 鼠标交互支持
-
-* **左键单击**：选中节点、切换菜单、激活窗格或点击状态按钮。
-* **左键双击**：(节点列表) 直接切换代理节点；(订阅列表) 直接激活订阅。
-* **右键单击**：(节点列表) 单节点延迟测速；(连接列表) 立即切断该网络连接。
-* **滚轮滚动**：在任何列表、日志或侧边栏区域均可丝滑平移。
+```bash
+mimo
+```
 
 ---
 
-## 🛠️ 常用 CLI 命令行速查
+## 🎮 操控指南 (Controls)
 
-无需启动 TUI，也可在终端或自动化脚本中无缝调用 Mimo CLI 控制代理核心：
+### 🖱️ 鼠标交互地图 (Mouse Engine)
+
+- **左侧导航栏**：单击直接切换页面；鼠标停留在侧边栏时滚动滚轮快速轮巡 10 大页面。
+- **顶部状态胶囊**：单击或滚轮上下滚动直接切换运行模式（`Rule` / `Global` / `Direct`）。
+- **代理节点面板**：
+  - **单击**：选中节点 / 代理分组。
+  - **双击**：立即切换并激活该代理节点。
+  - **右键单击**：对鼠标所指单个节点执行独立延迟测速。
+- **订阅管理面板**：点击顶部按钮（添加/更新/删除）；双击激活选中订阅；右键直接拉取更新。
+- **连接管理面板**：点击表头切换排序；单击查看连接详情；双击或右键快速切断指定连接。
+- **运行日志面板**：点击日志级别标签即时过滤；按 `c` 或右键清空日志；按 `a` 切换自动滚动锁定。
+- **系统设置面板**：点击任意配置行即时切换开关或循环选项；在底栏点击保存条立即持久化。
+- **弹窗交互体验**：点击输入框自动对焦，按 `Esc` 或点击弹窗外部半透明蒙层即可快速关闭。
+
+---
+
+### ⌨️ 键盘热键双列速查表
+
+```text
+╭── 导航与基础操控 ────────────────────╮╭── 代理与核心控制 ────────────────────╮
+│ 1 ~ 0       快速直达 10 大主功能页面 ││ m / M       循环切换模式 (Rule/Global/Direct)│
+│ Tab / ]     顺时针切页 / 切换表单焦点││ p / P       开关桌面系统代理 (SysProxy)      │
+│ [           逆时针切页               ││ x / X       开关 TUN 虚拟网卡透明代理        │
+│ j / k / ↓ ↑ 光标上下移动或滚动列表   ││ r / R       重启 Mihomo 核心服务             │
+│ h / l / ← → 侧边栏 ↔ 工作区焦点切换  ││ t / T       (Proxies) 组测速 / (Dash) 网站测速│
+│ g / G       快速跳至列表 顶部 / 底部 ││ o / O       (Proxies) 循环切换节点排序模式   │
+│ Enter       确认选择 / 激活 / 保存   ││ d / D       (Proxies) 单测 / (Conn) 断开连接 │
+│ / 或 s      开启实时搜索过滤输入框   ││ a / u       (Profiles) 添加 / 更新订阅       │
+│ Esc         退出搜索 / 关闭当前弹窗  ││ a / c       (Logs) 锁定滚动 / 清空日志流     │
+│ ?           打开 / 关闭快捷键帮助窗口││ q / Ctrl+C  安全退出 Mimo 程序               │
+╰──────────────────────────────────────╯╰──────────────────────────────────────╯
+```
+
+---
+
+## 🛠️ CLI 命令行模式速查
+
+无需启动 TUI 界面，Mimo 提供全套极简终端子命令，非常适合编写自动切换脚本或在 SSH 无头服务器运行：
 
 ```bash
 # 查看核心运行状态、出口公网 IP 与监听端口
 mimo status
 
-# 一键开关 Linux 桌面系统代理 (GNOME / KDE / 环境变量)
-mimo sysproxy on
-mimo sysproxy off --http-port 7890
+# 管理 TUN 虚拟网卡透明代理与系统提权
+mimo tun status                         # 查看 TUN 状态与权限诊断
+mimo tun on                             # 开启 TUN 透明代理模式
+mimo tun off                            # 关闭 TUN 模式
+mimo tun grant                          # 执行系统的 CAP_NET_ADMIN 授权 (免 root)
+mimo tun revoke                         # 撤销提权能力 (setcap -r)
 
-# 管理 TUN 虚拟网卡与免密权限
-mimo tun on                     # 开启 TUN 模式
-mimo tun off                    # 关闭 TUN 模式
-mimo tun grant                  # 赋予 CAP_NET_ADMIN (免 root 运行 TUN)
-mimo tun status                 # 查看网卡状态与权限诊断
+# 一键控制桌面系统代理 (自动识别 GNOME / KDE / Cinnamon)
+mimo sysproxy on                        # 开启桌面系统代理
+mimo sysproxy off                       # 关闭桌面系统代理
+mimo sysproxy on --http-port 7890       # 指定端口开启
 
-# 核心服务控制与自动更新
-mimo core update                # 自动检测官方最新版本、下载并热重启生效
-mimo core restart               # 重启 Mihomo 服务
-mimo core stop                  # 停止内核
+# 核心守护进程控制与智能升级
+mimo core update                        # 动态探测官方最新版本、下载并热重启生效
+mimo core restart                       # 重启 Mihomo 守护进程
+mimo core stop                          # 停止内核服务
+mimo core start                         # 启动内核服务
 
-# 订阅与配置管理
-mimo profile list               # 查看本地订阅与激活状态
-mimo profile add "MySub" <URL>  # 下载并添加订阅
-mimo profile use "MySub"        # 激活指定订阅
+# 订阅配置管理
+mimo profile list                       # 列出本地所有订阅配置
+mimo profile add "MySub" "https://..."  # 下载并注册新订阅
+mimo profile use "MySub"                # 激活指定配置
+mimo profile del "MySub"                # 删除指定配置
 
-# 节点与规则管理
-mimo proxy list                 # 列出所有代理节点与测速结果
-mimo proxy use "PROXY" "节点名"  # 切换指定分组的活跃节点
-mimo latency                    # 全量测速节点延迟
-mimo rules                      # 输出当前生效的路由规则清单
+# 节点与路由规则
+mimo proxy list                         # 列出所有代理节点及延迟
+mimo proxy use "PROXY" "节点名"         # 切换指定分组的活跃节点
+mimo latency                            # 全量刷新节点延迟
+mimo rules                              # 输出当前生效的路由规则清单
 ```
 
 ---
 
-## 📂 存储与配置路径
+## 📂 项目架构与目录规范
 
-* **主配置文件**：`~/.config/mimo/config.toml`
-* **自动下载内核**：`~/.config/mimo/bin/mihomo`
+### 源码模块架构
+
+```text
+src/
+├── main.rs                 # 程序入口 · 命令行 CLI 解析 (Clap) 与 TUI 初始化
+├── api/                    # Mihomo RESTful API 客户端 & WebSocket 实时通信
+├── app/
+│   ├── mod.rs              # 主事件循环 · 键盘事件调度与异步 Action 处理
+│   ├── mouse.rs            # 动态坐标命中测试引擎 · 滚轮跟随与手势处理
+│   ├── action.rs           # 统一应用交互 Action 定义
+│   └── state.rs            # 全局响应式状态机 · 视图状态与配置模型
+├── config/                 # 本地配置文件 (~/.config/mimo/config.toml) 与读写
+├── core/                   # 核心管理 · 多桌面代理 (GSettings/KIO) · TUN 提权 · 动态多源下载器
+├── profile/                # 订阅管理器 · Base64 & YAML 多协议智能解析器
+├── ui/                     # Ratatui 终端渲染引擎 · Catppuccin 主题 · 国际化多语言
+│   ├── components/         # 头部栏、底栏、侧边栏、帮助弹窗、输入弹窗、TUN 提权弹窗
+│   └── views/              # 10 大工作区视图组件实现
+└── commands/               # CLI 命令行子命令处理实现
+```
+
+### 本地持久化路径
+
+* **用户配置文件**：`~/.config/mimo/config.toml`
+* **托管内核二进制**：`~/.config/mimo/bin/mihomo`
 * **订阅存储目录**：`~/.config/mimo/profiles/`
-* **GeoIP / GeoSite 数据库**：`~/.config/mimo/geoip.metadb`
+* **GeoIP / 规则元数据**：`~/.config/mimo/geoip.metadb`
 
 ---
 
 ## 📄 开源许可
 
-本项目采用 [MIT License](LICENSE) 开源协议。欢迎提交 Issue 与 Pull Request 共同打造最极致的 Linux 代理控制体验！
+本项目采用 [MIT License](LICENSE) 开源协议。欢迎 Star 🌟、提交 Issue 与 Pull Request 共同打造 Linux 终端最极致的代理控制体验！
+
