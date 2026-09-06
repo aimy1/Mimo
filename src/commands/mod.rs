@@ -67,12 +67,17 @@ pub async fn handle_core_action(action: &str) -> Result<()> {
             CoreProcess::restart()?;
             println!("\x1b[32mDone.\x1b[0m");
         }
-        "download" | "install" => {
+        "download" | "install" | "update" => {
             println!("Downloading & Installing Mihomo Core binary automatically...");
             let path = crate::core::CoreDownloader::download_and_install(|msg| {
                 println!(" -> {}", msg);
             }).await?;
             println!("\x1b[32mSuccessfully installed Mihomo Core binary to {:?}\x1b[0m", path);
+            if CoreProcess::is_running() {
+                println!("Restarting Mihomo core service with new binary...");
+                let _ = CoreProcess::restart();
+                println!("\x1b[32mCore restarted successfully.\x1b[0m");
+            }
         }
         _ => anyhow::bail!("Unknown core action"),
     }
